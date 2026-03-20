@@ -1,0 +1,102 @@
+/* responsive.css */
+
+/* Layout improvements for larger screens */
+@media (min-width: 768px) {
+  .topic-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+  }
+
+  .view {
+    padding: 2.5rem;
+    align-items: center; /* Đổi lại thành center để không bị dãn dọc bất hợp lý */
+  }
+
+  /* Kỹ thuật pseudo-element margin auto để safe center dọc cho mọi .view khi trên desktop */
+  .view::before,
+  .view::after {
+    content: '';
+    margin: auto;
+  }
+
+  /* Make sure container doesn't get messed up */
+  .flashcard-container {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .flashcard-inner {
+    width: 600px;
+    max-width: 100%;
+    height: 400px;
+    margin: 0 auto;
+  }
+
+  .flashcard-controls {
+    max-width: 600px;
+    width: 100%;
+  }
+
+  /* Make forms and quizzes centered and appropriately sized */
+  .setup-form,
+  .quiz-container {
+    width: 100%;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  .nav-item {
+    font-size: var(--font-size-p);
+  }
+
+  .nav-item i {
+    font-size: 1.5rem;
+  }
+}
+
+/* Extra large screens */
+@media (min-width: 1280px) {
+  #app-main {
+    max-width: 1280px;
+    margin: 0 auto;
+    border-left: 1px solid #ddd;
+    border-right: 1px solid #ddd;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .app-header,
+  .bottom-nav {
+    max-width: 1280px;
+    margin: 0 auto;
+    width: 100%;
+  }
+}
+
+@media (min-width: 1024px) {
+  .flashcard-inner {
+    width: 860px;
+    max-width: 100%;
+    height: 480px;
+  }
+  .flashcard-controls {
+    max-width: 860px;
+  }
+  .setup-form,
+  .quiz-container {
+    max-width: 800px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .flashcard-front,
+  .flashcard-back {
+    font-size: 2rem;
+  }
+
+  .fc-content {
+    padding: 3rem 4rem 4rem 4rem; /* Padding lớn hơn cho desktop */
+  }
+}

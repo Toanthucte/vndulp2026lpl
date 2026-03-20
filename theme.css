@@ -1,0 +1,41 @@
+:root {
+  /* Colors */
+  --color-primary: #219ebc;
+  --color-secondary: #023047;
+  --color-accent: #ffb703;
+  --color-text: #222222;
+  --color-bg: #ffffff;
+  --color-neutral: #f8f9fa;
+  --color-error: #ef233c;
+  --color-success: #06d6a0;
+  --color-warning: #ffb703;
+
+  /* Typography Scale (1.414) */
+  --font-family-heading: 'Be Vietnam Pro', sans-serif;
+  --font-family-body: 'Be Vietnam Pro', sans-serif;
+
+  --font-size-base: 1rem; /* 16px */
+  --font-size-h1: 7.993rem; /* Desktop */
+  --font-size-h2: 5.653rem;
+  --font-size-h3: 3.998rem;
+  --font-size-h4: 2.827rem;
+  --font-size-h5: 1.999rem;
+  --font-size-h6: 1.414rem;
+  --font-size-p: 1rem;
+  --font-size-small: 0.707rem;
+
+  /* Box shadow */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg:
+    0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+
+  /* Borders */
+  --radius-md: 0.5rem;
+  --radius-lg: 1rem;
+  --radius-full: 9999px;
+
+  /* Layout */
+  --nav-height: 4rem; /* Bottom nav height */
+}

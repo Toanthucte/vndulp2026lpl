@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>KHTN 7 - Ứng Dụng Học Tập</title>
+    <meta
+      name="description"
+      content="Thẻ học thông minh và bài kiểm tra cá nhân hóa môn Khoa học Tự nhiên 7."
+    />
+
+    <!-- Open Graph / Facebook / Zalo / Zalo PC -->
+    <meta property="og:type" content="website" />
+    <meta
+      property="og:url"
+      content="https://toanthucte.github.io/App-KHTN-7-GK2/"
+    />
+    <meta property="og:title" content="KHTN 7 - Ôn Tập & Kiểm Tra" />
+    <meta
+      property="og:description"
+      content="Khám phá ngay bộ thẻ học thông minh và làm bài tập trắc nghiệm KHTN 7 trực tuyến. Nhanh chóng, hiệu quả, phù hợp học sinh!"
+    />
+    <!-- Bạn cần thay đường dẫn bên dưới bằng một ảnh logo/banner của riêng bạn sau này -->
+    <meta property="og:image" content="./assets/icons/icon-512x512.png" />
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta
+      property="twitter:url"
+      content="https://toanthucte.github.io/App-KHTN-7-GK2/"
+    />
+    <meta property="twitter:title" content="KHTN 7 - Ôn Tập & Kiểm Tra" />
+    <meta
+      property="twitter:description"
+      content="Khám phá ngay bộ thẻ học thông minh và làm bài tập trắc nghiệm KHTN 7 trực tuyến. Nhanh chóng, hiệu quả, phù hợp học sinh!"
+    />
+    <!-- Bạn cần thay đường dẫn bên dưới bằng một ảnh logo/banner của riêng bạn sau này -->
+    <meta property="twitter:image" content="./assets/icons/icon-512x512.png" />
+
+    <!-- PWA -->
+    <link rel="manifest" href="./manifest.json" />
+    <link rel="icon" type="image/x-icon" href="./favicon.ico" />
+    <meta name="theme-color" content="#023047" />
+
+    <!-- Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <!-- Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- Font Awesome -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+
+    <link rel="stylesheet" href="./theme.css" />
+    <link rel="stylesheet" href="./main.css" />
+    <link rel="stylesheet" href="./responsive.css" />
+
+    <script src="./js/data.js" defer></script>
+    <script src="./js/app.js" defer></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker
+            .register('./sw.js')
+            .then((reg) => {
+              console.log('SW registered:', reg)
+            })
+            .catch((err) => console.log('SW registration failed:', err))
+        })
+      }
+    </script>
+  </head>
+  <body>
+    <!-- Top Header with Timer (if active) -->
+    <header class="app-header">
+      <h1 id="app-title">KHTN 7 - Ôn Tập</h1>
+      <div class="header-controls">
+        <div id="timer-display" class="hidden">00:00</div>
+        <button
+          id="btn-sound-toggle"
+          class="icon-btn"
+          aria-label="Bật/tắt âm thanh"
+        >
+          <i class="fas fa-volume-up"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="app-main" id="app-main">
+      <!-- Views injected here dynamically using JS -->
+      <section id="view-home" class="view active">
+        <h2>Bạn muốn ôn tập phần nào?</h2>
+        <div class="topic-grid" id="topic-container">
+          <!-- JS load list of topics -->
+        </div>
+      </section>
+
+      <!-- Flashcards View -->
+      <section id="view-flashcards" class="view">
+        <div class="flashcard-container" id="flashcard-box">
+          <!-- 1 touch flip inner -->
+          <div class="flashcard-inner">
+            <div class="flashcard-front">
+              <div class="fc-content">
+                <p id="fc-front-text">Front</p>
+              </div>
+              <div class="fc-hint">
+                <i class="fas fa-hand-pointer"></i> <span>Chạm để lật thẻ</span>
+              </div>
+            </div>
+            <div class="flashcard-back">
+              <div class="fc-content">
+                <p id="fc-back-text">Back</p>
+              </div>
+              <div class="fc-hint">
+                <i class="fas fa-undo"></i> <span>Chạm để lật lại</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Các nút tự đánh giá (sẽ được hiển thị khi xem mặt sau) -->
+        <div class="fc-assessment-controls" id="fc-assessment-controls">
+          <button id="btn-fc-hard" class="btn-assess hard" title="Chưa thuộc">
+            <i class="fas fa-frown"></i> Khó
+          </button>
+          <button id="btn-fc-easy" class="btn-assess easy" title="Đã thuộc">
+            <i class="fas fa-smile"></i> Dễ
+          </button>
+        </div>
+
+        <div class="flashcard-controls">
+          <button id="btn-prev-card" class="btn btn-secondary">
+            <i class="fas fa-chevron-left"></i>
+          </button>
+          <span id="fc-progress">1 / 10</span>
+          <button id="btn-next-card" class="btn btn-primary">
+            <i class="fas fa-chevron-right"></i>
+          </button>
+        </div>
+      </section>
+
+      <!-- Quiz Setup View -->
+      <section id="view-quiz-setup" class="view">
+        <h2>Cài đặt Bài Kiểm Tra</h2>
+        <form id="quiz-setup-form" class="setup-form">
+          <div class="form-group">
+            <label for="quiz-time">Thời gian (phút):</label>
+            <input
+              type="number"
+              id="quiz-time"
+              name="quiz-time"
+              value="15"
+              min="1"
+              max="120"
+            />
+          </div>
+          <div class="form-group">
+            <label for="quiz-count">Số câu hỏi:</label>
+            <input
+              type="number"
+              id="quiz-count"
+              name="quiz-count"
+              value="10"
+              min="5"
+              max="50"
+            />
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">
+            Bắt Đầu
+          </button>
+        </form>
+      </section>
+
+      <!-- Quiz Taking View -->
+      <section id="view-quiz" class="view">
+        <div class="quiz-container">
+          <div class="quiz-progress-bar">
+            <div id="quiz-progress-fill" class="fill"></div>
+          </div>
+          <p class="quiz-question-number" id="quiz-current-num">Câu 1/10:</p>
+          <h3 id="quiz-question-text" class="question-text">
+            Question goes here
+          </h3>
+          <div id="quiz-options" class="options-container">
+            <!-- Options rendered by JS -->
+          </div>
+        </div>
+      </section>
+
+      <!-- Quiz Result View -->
+      <section id="view-result" class="view">
+        <h2>Kết Quả Của Bạn</h2>
+
+        <!-- Reward Badge / Avatar -->
+        <div
+          id="reward-badge"
+          style="font-size: 3rem; margin-top: 0.5rem; display: none"
+        >
+          🏆
+        </div>
+        <p
+          id="reward-message"
+          style="
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--color-primary);
+            margin-top: 0.5rem;
+          "
+        ></p>
+
+        <div class="score-circle">
+          <span id="score-text">0%</span>
+        </div>
+        <div class="result-details">
+          <p>Số câu đúng: <strong id="correct-count">0</strong></p>
+          <p>Số câu sai: <strong id="wrong-count">0</strong></p>
+        </div>
+
+        <div
+          id="review-container"
+          style="
+            display: none;
+            margin-top: 1.5rem;
+            text-align: left;
+            width: 100%;
+            max-width: 600px;
+            margin-inline: auto;
+          "
+        >
+          <h3 style="margin-bottom: 1rem; text-align: center">
+            Xem Lại Đáp Án
+          </h3>
+          <div id="review-list"></div>
+        </div>
+
+        <div
+          style="
+            display: flex;
+            gap: 1rem;
+            width: 100%;
+            max-width: 400px;
+            margin: 1.5rem auto 0 auto;
+            flex-direction: column;
+          "
+        >
+          <button id="btn-review" class="btn btn-secondary btn-block">
+            Xem lại câu hỏi
+          </button>
+          <button id="btn-retry" class="btn btn-primary btn-block">
+            Làm Lại
+          </button>
+          <button id="btn-home" class="btn btn-secondary btn-block">
+            Về Trang Chủ
+          </button>
+        </div>
+      </section>
+    </main>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+      <a href="#" class="nav-item active" data-target="view-home">
+        <i class="fas fa-home"></i>
+        <span>Chủ đề</span>
+      </a>
+      <a href="#" class="nav-item" data-target="view-flashcards-start">
+        <!-- Auto starts flashcards -->
+        <i class="fas fa-clone"></i>
+        <span>Thẻ Học</span>
+      </a>
+      <a href="#" class="nav-item" data-target="view-quiz-setup">
+        <i class="fas fa-list-check"></i>
+        <span>Kiểm tra</span>
+      </a>
+    </nav>
+  </body>
+</html>
