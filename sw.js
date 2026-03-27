@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vndulp-app-v1'
+const CACHE_NAME = 'vndulp-app-v2' // Đổi tên cache để làm mới
 const urlsToCache = [
   './',
   './index.html',
@@ -13,6 +13,8 @@ const urlsToCache = [
 ]
 
 self.addEventListener('install', (event) => {
+  // Buộc service worker mới nhậm chức ngay lập tức
+  self.skipWaiting()
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(urlsToCache)
@@ -21,28 +23,39 @@ self.addEventListener('install', (event) => {
 })
 
 self.addEventListener('fetch', (event) => {
+  // Chiến lược: Network-First, fall back to Cache (Luôn lấy mạng trước, lỗi mạng mới dùng cache)
+  // Như vậy app sẽ luôn lấy giao diện/bệnh mới nhất nếu có internet
   event.respondWith(
-    caches.match(event.request).then((response) => {
-      if (response) {
-        return response
-      }
-      return fetch(event.request).catch(() => {
-        return response
+    fetch(event.request)
+      .then((networkResponse) => {
+        // Nếu lấy từ mạng thành công, lưu bản mới vào cache và trả về cho user
+        if (networkResponse && networkResponse.status === 200) {
+          const responseToCache = networkResponse.clone()
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseToCache)
+          })
+        }
+        return networkResponse
       })
-    }),
+      .catch(() => {
+        // Nếu rớt mạng (offline), mới lôi file cũ từ cache ra xài
+        return caches.match(event.request)
+      }),
   )
 })
 
 self.addEventListener('activate', (event) => {
+  // Xóa sạch các bộ nhớ đệm của phiên bản cũ
   event.waitUntil(
-    caches
-      .keys()
-      .then((cacheNames) =>
-        Promise.all(
-          cacheNames
-            .filter((cacheName) => cacheName !== CACHE_NAME)
-            .map((cacheName) => caches.delete(cacheName)),
-        ),
+    caches.keys().then((cacheNames) =>
+      Promise.all(
+        cacheNames
+          .filter((cacheName) => cacheName !== CACHE_NAME)
+          .map((cacheName) => caches.delete(cacheName)),
       ),
+    ).then(() => {
+      // Báo cho các trang đang mở biết để reload lại code mới
+      return clients.claim()
+    })
   )
 })
