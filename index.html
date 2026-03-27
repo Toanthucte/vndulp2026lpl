@@ -44,23 +44,26 @@
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('./sw.js').then((registration) => {
-            // Kiểm tra cập nhật định kỳ (mỗi khi mở web)
-            registration.update();
-            console.log('SW registered: ', registration);
-          }).catch((error) => {
-            console.error('Service worker registration failed:', error)
-          })
+          navigator.serviceWorker
+            .register('./sw.js')
+            .then((registration) => {
+              // Kiểm tra cập nhật định kỳ (mỗi khi mở web)
+              registration.update()
+              console.log('SW registered: ', registration)
+            })
+            .catch((error) => {
+              console.error('Service worker registration failed:', error)
+            })
         })
 
         // Tự động reload ứng dụng nếu SW báo có bản cập nhật mới
-        let refreshing = false;
+        let refreshing = false
         navigator.serviceWorker.addEventListener('controllerchange', () => {
           if (!refreshing) {
-            window.location.reload();
-            refreshing = true;
+            window.location.reload()
+            refreshing = true
           }
-        });
+        })
       }
     </script>
   </head>
