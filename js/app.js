@@ -1,988 +1,651 @@
-﻿// js/app.js
-
+// js/app.js
 document.addEventListener('DOMContentLoaded', () => {
-  // Quản lý Trạng thái Âm thanh
-  let isSoundMuted = localStorage.getItem('app_sound_muted') === 'true'
-  const btnSoundToggle = document.getElementById('btn-sound-toggle')
-
-  function updateSoundIcon() {
-    const icon = btnSoundToggle.querySelector('i')
-    if (isSoundMuted) {
-      icon.className = 'fas fa-volume-mute'
-      btnSoundToggle.classList.add('muted')
-    } else {
-      icon.className = 'fas fa-volume-up'
-      btnSoundToggle.classList.remove('muted')
-    }
+  // =================== UTILS ===================
+  // Normalize Vietnamese to no-diacritics latin for fuzzy search
+  function normalize(str) {
+    return str
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/đ/g, 'd')
+      .replace(/[^a-z0-9\s]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
   }
 
-  updateSoundIcon() // Khởi tạo icon ban đầu
+  function levenshtein(a, b) {
+    if (a === b) return 0
+    if (!a.length) return b.length
+    if (!b.length) return a.length
 
-  btnSoundToggle.addEventListener('click', () => {
-    isSoundMuted = !isSoundMuted
-    localStorage.setItem('app_sound_muted', isSoundMuted)
-    updateSoundIcon()
-  })
+    const matrix = Array.from({ length: a.length + 1 }, () =>
+      new Array(b.length + 1).fill(0),
+    )
 
-  // Âm thanh Game
-  const sounds = {
-    correct: new Audio('./assets/sounds/quiz-correct.mp3'),
-    wrong: new Audio('./assets/sounds/quiz-incorrect.mp3'),
-    complete: new Audio('./assets/sounds/quiz-complete.mp3'),
-  }
+    for (let i = 0; i <= a.length; i++) matrix[i][0] = i
+    for (let j = 0; j <= b.length; j++) matrix[0][j] = j
 
-  function playSound(type) {
-    // Haptic Feedback (Rung vật lý) kết hợp cùng âm thanh
-    if (navigator.vibrate) {
-      if (type === 'correct') {
-        navigator.vibrate(50) // Rung nhẹ một nhịp khi đúng
-      } else if (type === 'wrong') {
-        navigator.vibrate([50, 100, 50]) // Rung nhắc nhở (2 nhịp ngắn) khi sai
-      } else if (type === 'complete') {
-        navigator.vibrate([100, 50, 100, 50, 100]) // Rung dài liên tục kiểu pháo hoa chiến thắng
-      } else if (type === 'flip') {
-        navigator.vibrate(30) // Rung rất cực nhẹ khi lật thẻ
+    for (let i = 1; i <= a.length; i++) {
+      for (let j = 1; j <= b.length; j++) {
+        const cost = a[i - 1] === b[j - 1] ? 0 : 1
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j - 1] + cost,
+        )
       }
     }
 
-    if (isSoundMuted) return // Bỏ qua nếu đang tắt âm thanh (Rung vẫn hoạt động để đảm bảo trải nghiệm)
+    return matrix[a.length][b.length]
+  }
 
-    // Âm thanh lật thẻ đặc biệt không khai báo cứng vì chỉ dùng nhẹ
-    if (type === 'flip') {
-      const flipSound = new Audio('./assets/sounds/card-slide.mp3')
-      flipSound.volume = 0.5
-      flipSound.play().catch(() => {})
+  function similarity(a, b) {
+    if (!a || !b) return 0
+    if (a === b) return 1
+    const dist = levenshtein(a, b)
+    const maxLen = Math.max(a.length, b.length)
+    return maxLen ? 1 - dist / maxLen : 0
+  }
+
+  // =================== ELEMENTS ===================
+  const views = document.querySelectorAll('.view')
+  const navItems = document.querySelectorAll('.nav-item')
+  const btnBack = document.getElementById('btn-back')
+  const btnInfo = document.getElementById('btn-info')
+  const appTitle = document.getElementById('app-title')
+  const searchInput = document.getElementById('search-input')
+  const btnVoiceSearch = document.getElementById('btn-voice-search')
+  const tagsContainer = document.getElementById('tags-container')
+  const searchSuggestionSection = document.getElementById(
+    'search-suggestion-section',
+  )
+  const searchSuggestionContainer = document.getElementById(
+    'search-suggestion-container',
+  )
+  const searchResultsSection = document.getElementById('search-results-section')
+  const resultsContainer = document.getElementById('results-container')
+  const diagramTabs = document.getElementById('diagram-tabs')
+  const diagramGallery = document.getElementById('diagram-gallery')
+  const diagramEmpty = document.getElementById('diagram-empty')
+
+  // Detail
+  const detailTitle = document.getElementById('detail-title')
+  const detailCategory = document.getElementById('detail-category')
+  const detailMediaList = document.getElementById('detail-media-list')
+  const detailImagePlaceholder = document.getElementById(
+    'detail-image-placeholder',
+  )
+  const detailInstruction = document.getElementById('detail-instruction')
+  const detailNotes = document.getElementById('detail-notes')
+  const detailVideos = document.getElementById('detail-videos')
+  const btnReadInstruction = document.getElementById('btn-read-instruction')
+
+  // =================== VIEW SWITCH ===================
+  let previousView = 'view-home'
+  let currentView = 'view-home'
+  let activeDiagramSectionId = null
+
+  const navHome = document.querySelector('.nav-item[data-target="view-home"]')
+
+  function clearSearchSuggestions() {
+    if (searchSuggestionContainer) {
+      searchSuggestionContainer.innerHTML = ''
+    }
+    if (searchSuggestionSection) {
+      searchSuggestionSection.classList.add('hidden')
+    }
+  }
+
+  function renderSearchSuggestions(query, suggestions) {
+    if (!searchSuggestionContainer || !searchSuggestionSection) return
+
+    if (!suggestions.length) {
+      clearSearchSuggestions()
       return
     }
 
-    if (sounds[type]) {
-      sounds[type].currentTime = 0
-      sounds[type]
-        .play()
-        .catch((err) => console.log('Audio disabled by browser:', err))
-    }
-  }
+    searchSuggestionContainer.innerHTML = ''
+    const suggestBox = document.createElement('div')
+    suggestBox.className = 'search-suggestion-box'
 
-  // Navigation
-  const navItems = document.querySelectorAll('.nav-item')
-  const views = document.querySelectorAll('.view')
+    const title = document.createElement('p')
+    title.className = 'search-suggestion-title'
+    title.textContent = `Có phải bạn muốn tìm: "${query}"?`
+    suggestBox.appendChild(title)
+
+    const list = document.createElement('div')
+    list.className = 'search-suggestion-list'
+    suggestions.forEach((term) => {
+      const btn = document.createElement('button')
+      btn.type = 'button'
+      btn.className = 'suggestion-chip'
+      btn.textContent = term
+      btn.addEventListener('click', () => {
+        searchInput.value = term
+        handleSearch(term)
+        searchResultsSection.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
+        })
+      })
+      list.appendChild(btn)
+    })
+
+    suggestBox.appendChild(list)
+    searchSuggestionContainer.appendChild(suggestBox)
+    searchSuggestionSection.classList.remove('hidden')
+  }
 
   function switchView(targetId) {
-    views.forEach((v) => v.classList.remove('active'))
-    document.getElementById(targetId).classList.add('active')
-
-    // Manage App Header logic
-    const timerDisplay = document.getElementById('timer-display')
-    if (targetId !== 'view-quiz') {
-      timerDisplay.classList.add('hidden')
-      stopTimer()
+    views.forEach((v) => v.classList.add('hidden'))
+    const target = document.getElementById(targetId)
+    if (target) {
+      target.classList.remove('hidden')
+      target.style.animation = 'none'
+      target.offsetHeight
+      target.style.animation = ''
     }
+
+    previousView = currentView
+    currentView = targetId
+
+    if (targetId === 'view-detail') {
+      btnBack.classList.remove('hidden')
+      appTitle.textContent = 'Chi tiết bệnh'
+      navHome && navHome.classList.add('nav-hint')
+    } else {
+      btnBack.classList.add('hidden')
+      appTitle.textContent = 'Đồng Ứng Liệu Pháp'
+      navHome && navHome.classList.remove('nav-hint')
+    }
+
+    if (targetId === 'view-home') {
+      clearSearchSuggestions()
+    }
+
+    if (targetId === 'view-dohinh') {
+      renderDiagramView()
+    }
+
+    navItems.forEach((item) => {
+      item.classList.toggle('active', item.dataset.target === targetId)
+    })
   }
 
+  // Nav
   navItems.forEach((item) => {
     item.addEventListener('click', (e) => {
       e.preventDefault()
-      navItems.forEach((n) => n.classList.remove('active'))
-      item.classList.add('active')
-      const target = item.getAttribute('data-target')
+      switchView(item.dataset.target)
+    })
+  })
 
-      if (target === 'view-flashcards-start') {
-        initFlashcards()
-        switchView('view-flashcards')
-      } else {
-        switchView(target)
+  btnBack.addEventListener('click', () => {
+    switchView(previousView || 'view-home')
+  })
+
+  btnInfo.addEventListener('click', () => {
+    switchView('view-about')
+  })
+
+  // =================== TAGS ===================
+  function renderTags() {
+    tagsContainer.innerHTML = ''
+    appData.popularTags.forEach((tag) => {
+      const chip = document.createElement('button')
+      chip.className = 'tag-chip'
+      chip.textContent = tag
+      chip.addEventListener('click', () => {
+        searchInput.value = tag
+        handleSearch(tag)
+        searchResultsSection.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
+        })
+      })
+      tagsContainer.appendChild(chip)
+    })
+  }
+
+  // =================== SEARCH ===================
+  function rankDisease(disease, q) {
+    const fields = [
+      normalize(disease.title),
+      normalize(disease.category),
+      ...disease.keywords.map((k) => normalize(k)),
+    ].filter(Boolean)
+
+    let best = 0
+    fields.forEach((field) => {
+      if (field.includes(q) || q.includes(field)) {
+        best = Math.max(best, 1)
+        return
       }
-    })
-  })
 
-  // ========== HOME / TOPICS ==========
-  const topicContainer = document.getElementById('topic-container')
-  appData.topics.forEach((topic) => {
-    const questionCount = (appData.questions || []).filter(
-      (q) => q.topicId === topic.id,
-    ).length
-    const flashcardCount = (appData.flashcards || []).filter(
-      (f) => f.topicId === topic.id,
-    ).length
+      const direct = similarity(q, field)
+      best = Math.max(best, direct)
 
-    const card = document.createElement('div')
-    card.className = 'topic-card'
-    card.style.borderLeft = `5px solid ${topic.accent}`
-    card.innerHTML = `
-      <h3 style="color:${topic.accent}">${topic.title}</h3>
-      <p style="font-size:0.875rem; color:#666; margin-bottom:0.4rem; font-weight:500;">
-        ${topic.subject} &bull; ${flashcardCount} thẻ học | ${questionCount} câu hỏi
-      </p>
-      <p>${topic.summary}</p>
-    `
-    card.addEventListener('click', () => {
-      // Just start flashcard for this topic for simplicity
-      initFlashcards(topic.id)
-      navItems.forEach((n) => n.classList.remove('active'))
-      document
-        .querySelector('[data-target="view-flashcards-start"]')
-        .classList.add('active')
-      switchView('view-flashcards')
-    })
-    topicContainer.appendChild(card)
-  })
-
-  // ========== FLASHCARDS ==========
-  let currentCardIndex = 0
-  let currentCards = []
-  const flashcardInner = document.querySelector('.flashcard-inner')
-  const fcFrontContent = document.getElementById('fc-front-text')
-  const fcBackContent = document.getElementById('fc-back-text')
-  const fcProgress = document.getElementById('fc-progress')
-  const fcAssessmentControls = document.getElementById('fc-assessment-controls')
-  const btnFcEasy = document.getElementById('btn-fc-easy')
-  const btnFcHard = document.getElementById('btn-fc-hard')
-
-  function initFlashcards(topicId = null) {
-    if (topicId) {
-      currentCards = (appData.flashcards || []).filter(
-        (c) => c.topicId === topicId,
-      )
-    } else {
-      currentCards = [...(appData.flashcards || [])]
-    }
-
-    // Shuffle
-    currentCards.sort(() => Math.random() - 0.5)
-    currentCardIndex = 0
-
-    if (currentCards.length > 0) {
-      showFlashcard()
-    } else {
-      fcFrontContent.innerText = 'Chưa có thẻ học nào cho phần này.'
-      fcBackContent.innerText = ''
-    }
-  }
-
-  function showFlashcard() {
-    flashcardInner.classList.remove('is-flipped')
-    if (fcAssessmentControls) fcAssessmentControls.classList.remove('visible')
-    const card = currentCards[currentCardIndex]
-
-    // Small delay to let flip animation resolve before changing text
-    setTimeout(() => {
-      fcFrontContent.innerHTML = card.front
-      fcBackContent.innerHTML = card.back
-      fcProgress.innerText = `${currentCardIndex + 1} / ${currentCards.length}`
-    }, 200)
-  }
-
-  flashcardInner.addEventListener('click', () => {
-    playSound('flip')
-    const isFlipped = flashcardInner.classList.contains('is-flipped')
-    if (isFlipped) {
-      flashcardInner.classList.remove('is-flipped')
-      if (fcAssessmentControls) fcAssessmentControls.classList.remove('visible')
-    } else {
-      flashcardInner.classList.add('is-flipped')
-      if (fcAssessmentControls) fcAssessmentControls.classList.add('visible')
-    }
-  })
-
-  function processAssessment(type) {
-    if (currentCardIndex < currentCards.length - 1) {
-      currentCardIndex++
-      showFlashcard()
-    } else {
-      alert('Đã hoàn thành vòng thẻ học!')
-      // Tùy chọn: initFlashcards() lại từ đầu
-    }
-  }
-
-  if (btnFcEasy)
-    btnFcEasy.addEventListener('click', (e) => {
-      e.stopPropagation() // Ngăn không cho lật thẻ lại
-      processAssessment('easy')
-    })
-  if (btnFcHard)
-    btnFcHard.addEventListener('click', (e) => {
-      e.stopPropagation()
-      processAssessment('hard')
+      field.split(' ').forEach((token) => {
+        if (token.length < 3) return
+        best = Math.max(best, similarity(q, token))
+      })
     })
 
-  document.getElementById('btn-next-card').addEventListener('click', () => {
-    if (currentCardIndex < currentCards.length - 1) {
-      currentCardIndex++
-      showFlashcard()
-    } else {
-      alert('Đã hoàn thành thẻ học!')
-    }
-  })
-
-  document.getElementById('btn-prev-card').addEventListener('click', () => {
-    if (currentCardIndex > 0) {
-      currentCardIndex--
-      showFlashcard()
-    }
-  })
-
-  // ========== QUIZ ==========
-  let quizQuestions = []
-  let userAnswers = []
-  let currentQuizIndex = 0
-  let score = 0
-  let quizTimerInterval
-  let timeRemaining = 0
-
-  const quizSetupForm = document.getElementById('quiz-setup-form')
-  const quizProgressFill = document.getElementById('quiz-progress-fill')
-  const quizCurrentNum = document.getElementById('quiz-current-num')
-  const quizQuestionText = document.getElementById('quiz-question-text')
-  const quizOptions = document.getElementById('quiz-options')
-
-  quizSetupForm.addEventListener('submit', (e) => {
-    e.preventDefault()
-    const timeLimit = parseInt(document.getElementById('quiz-time').value) * 60
-    let count = parseInt(document.getElementById('quiz-count').value)
-
-    quizQuestions = [...(appData.questions || [])]
-      .sort(() => Math.random() - 0.5)
-      .slice(0, count)
-    currentQuizIndex = 0
-    score = 0
-    timeRemaining = timeLimit
-
-    switchView('view-quiz')
-    document.getElementById('timer-display').classList.remove('hidden')
-    startTimer()
-    showQuizQuestion()
-  })
-
-  function startTimer() {
-    updateTimerDisplay()
-    quizTimerInterval = setInterval(() => {
-      timeRemaining--
-      updateTimerDisplay()
-      if (timeRemaining <= 0) {
-        stopTimer()
-        endQuiz(true) // Time's up
-      }
-    }, 1000)
+    return best
   }
 
-  function stopTimer() {
-    clearInterval(quizTimerInterval)
+  function getFuzzyResults(q) {
+    const threshold = q.length <= 4 ? 0.68 : 0.58
+    return appData.diseases
+      .map((disease) => ({ disease, score: rankDisease(disease, q) }))
+      .filter((item) => item.score >= threshold)
+      .sort((a, b) => b.score - a.score)
+      .map((item) => item.disease)
   }
 
-  function updateTimerDisplay() {
-    const m = Math.floor(timeRemaining / 60)
-      .toString()
-      .padStart(2, '0')
-    const s = (timeRemaining % 60).toString().padStart(2, '0')
-    document.getElementById('timer-display').innerText = `${m}:${s}`
+  function getSearchSuggestions(q) {
+    if (q.length < 3) return []
+
+    const corpus = [
+      ...new Set([
+        ...appData.popularTags,
+        ...appData.diseases.map((d) => d.title),
+      ]),
+    ]
+
+    return corpus
+      .map((term) => {
+        const norm = normalize(term)
+        let score = similarity(q, norm)
+
+        if (norm.includes(q) || q.includes(norm)) {
+          score = Math.max(score, 0.95)
+        }
+
+        return { term, score }
+      })
+      .filter((item) => item.score >= 0.55)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 5)
+      .map((item) => item.term)
   }
 
-  function showQuizQuestion() {
-    if (currentQuizIndex >= quizQuestions.length) {
-      endQuiz()
+  function handleSearch(query) {
+    const q = normalize(query)
+
+    if (!q) {
+      clearSearchSuggestions()
+      searchResultsSection.classList.add('hidden')
       return
     }
 
-    const q = quizQuestions[currentQuizIndex]
-    quizProgressFill.style.width = `${(currentQuizIndex / quizQuestions.length) * 100}%`
-    quizCurrentNum.innerText = `Câu ${currentQuizIndex + 1} / ${quizQuestions.length}`
-    quizQuestionText.innerText = q.prompt || q.question
-
-    quizOptions.innerHTML = ''
-
-    if (q.type === 'statement_count') {
-      quizQuestionText.innerHTML = q.prompt
-      renderStatementCountQuestion(q)
-    } else if (q.type === 'true_false') {
-      quizQuestionText.innerHTML = q.prompt
-      renderTrueFalseQuestion(q)
-    } else if (q.type === 'equation_fill') {
-      quizQuestionText.innerHTML = q.prompt || q.question
-      renderEquationFillQuestion(q)
-    } else if (q.type === 'sentence_builder') {
-      quizQuestionText.innerHTML = q.prompt
-      renderSentenceBuilderQuestion(q)
-    } else if (q.type === 'fill_blank') {
-      quizQuestionText.innerHTML = ''
-      renderFillBlankQuestion(q)
-    } else {
-      // Clone and shuffle options so answer isn't always at same spot
-      const options = [...q.options].sort(() => Math.random() - 0.5)
-
-      options.forEach((opt) => {
-        const btn = document.createElement('button')
-        btn.className = 'option-btn'
-        btn.innerText = opt
-        btn.addEventListener('click', () =>
-          handleOptionSelect(btn, opt, q.answer),
-        )
-        quizOptions.appendChild(btn)
-      })
-    }
-  }
-
-  function handleOptionSelect(btnElement, selectedOpt, correctOpt) {
-    const allBtns = quizOptions.querySelectorAll('.option-btn')
-    allBtns.forEach((b) => (b.disabled = true))
-    userAnswers.push({
-      q: quizQuestions[currentQuizIndex].prompt,
-      options: quizQuestions[currentQuizIndex].options,
-      ans: correctOpt,
-      sel: selectedOpt,
-    })
-
-    if (selectedOpt === correctOpt) {
-      playSound('correct')
-      btnElement.classList.add('correct')
-      score++
-    } else {
-      playSound('wrong')
-      btnElement.classList.add('wrong')
-      btnElement.classList.add('shake')
-      // Highlight correct option
-      allBtns.forEach((b) => {
-        if (b.innerText === correctOpt) b.classList.add('correct')
-      })
-    }
-
-    // "1 cháº¡m qua bÃ i" - sau khi tá»± Ä‘á»™ng hiá»‡n káº¿t quáº£, chá» 1.5s nháº£y qua cÃ¢u tiáº¿p theo
-    setTimeout(() => {
-      currentQuizIndex++
-      showQuizQuestion()
-    }, 1500)
-  }
-
-  function renderStatementCountQuestion(q) {
-    let html = `
-      <div class="sc-hint">
-        <span style="font-size: 1.2rem; margin-right: 5px;">✍️</span> 
-        <strong>Mẹo làm bài:</strong> Hãy tick (☑️) vào các phát biểu mà em cho là <strong>ĐÚNG</strong> ở bên dưới để đếm số lượng, sau đó chốt chọn 1 đáp án A, B, C, D hợp lý nhất nhé!
-      </div>
-      <div class="sc-list">
-    `
-
-    q.statements.forEach((stmt, i) => {
-      html += `
-          <div class="sc-item" data-index="${i}">
-            <input type="checkbox" class="sc-checkbox" id="sc-check-${i}">
-            <label for="sc-check-${i}" class="sc-label">${stmt}</label>
-          </div>
-        `
-    })
-
-    html += `</div><div class="sc-options-container" id="sc-options-container"></div>`
-    quizOptions.innerHTML = html
-
-    const scOptionsContainer = document.getElementById('sc-options-container')
-    const options = [...q.options]
-
-    // Interaction trick for checkboxes
-    const checkboxes = document.querySelectorAll('.sc-checkbox')
-    checkboxes.forEach((cb) => {
-      cb.addEventListener('change', () => {
-        const checkedCount = document.querySelectorAll(
-          '.sc-checkbox:checked',
-        ).length
-        const items = document.querySelectorAll('.sc-item')
-
-        // Highlight the selected row slightly
-        items.forEach((item, index) => {
-          if (document.getElementById(`sc-check-${index}`).checked) {
-            item.classList.add('checked-row')
-          } else {
-            item.classList.remove('checked-row')
-          }
-        })
-      })
-    })
-
-    // The actual buttons to submit the answer uses the same array
-    options.forEach((opt) => {
-      const btn = document.createElement('button')
-      btn.className = 'option-btn'
-      btn.innerText = opt
-
-      btn.addEventListener('click', () => {
-        // Disable drafts after selecting final answer
-        document
-          .querySelectorAll('.sc-checkbox')
-          .forEach((cb) => (cb.disabled = true))
-        handleOptionSelect(btn, opt, q.answer)
-      })
-      scOptionsContainer.appendChild(btn)
-    })
-  }
-
-  function renderTrueFalseQuestion(q) {
-    let html = '<div class="tf-container">'
-    q.statements.forEach((stmt, i) => {
-      html += `
-        <div class="tf-statement" id="stmt-${i}">
-          <div class="tf-text">${i + 1}. ${stmt.text}</div>
-          <div class="tf-btn-group">
-            <button class="tf-btn tf-true" data-index="${i}" data-val="true">Đúng</button>
-            <button class="tf-btn tf-false" data-index="${i}" data-val="false">Sai</button>
-          </div>
-          <div class="tf-feedback hidden" id="feedback-${i}"></div>
-        </div>
-      `
-    })
-    html += `<button class="tf-submit-btn" id="tf-submit" disabled>Kiểm tra đáp án</button></div>`
-
-    quizOptions.innerHTML = html
-
-    const userChoices = new Array(q.statements.length).fill(null)
-    const submitBtn = document.getElementById('tf-submit')
-
-    document.querySelectorAll('.tf-btn').forEach((btn) => {
-      btn.addEventListener('click', (e) => {
-        const index = parseInt(e.target.dataset.index)
-        const val = e.target.dataset.val === 'true'
-
-        // Remove active class from buttons in this group
-        const group = e.target.closest('.tf-btn-group')
-        group
-          .querySelectorAll('.tf-btn')
-          .forEach((b) => b.classList.remove('active'))
-
-        // Add active class to clicked button
-        e.target.classList.add('active')
-
-        userChoices[index] = val
-
-        // Check if all are answered to enable submit
-        if (userChoices.every((c) => c !== null)) {
-          submitBtn.removeAttribute('disabled')
-        }
-      })
-    })
-
-    submitBtn.addEventListener('click', () => {
-      // Disable buttons
-      document
-        .querySelectorAll('.tf-btn')
-        .forEach((b) => (b.style.pointerEvents = 'none'))
-      submitBtn.style.display = 'none' // hide submit
-
-      let allCorrect = true
-
-      q.statements.forEach((stmt, i) => {
-        const stmtEl = document.getElementById(`stmt-${i}`)
-        const feedbackEl = document.getElementById(`feedback-${i}`)
-
-        const isCorrect = userChoices[i] === stmt.answer
-        if (!isCorrect) allCorrect = false
-
-        if (isCorrect) {
-          stmtEl.classList.add('correct')
-        } else {
-          stmtEl.classList.add('incorrect')
-          stmtEl.classList.add('shake')
-        }
-
-        // Show explanation for false answers or when user missed it
-        if (stmt.explanation && (!isCorrect || stmt.answer === false)) {
-          feedbackEl.innerHTML = `<span class="feedback-icon">💡</span> ${stmt.explanation}`
-          feedbackEl.classList.remove('hidden')
-        }
-      })
-
-      if (allCorrect) {
-        playSound('correct')
-        score++
-      } else {
-        playSound('wrong')
-      }
-
-      // Save answer
-      userAnswers.push({
-        q: q.prompt,
-        options: ['Câu hỏi Đúng/Sai'],
-        ans: 'Tất cả các ý',
-        selected: allCorrect ? 'Đã chọn chính xác' : 'Có ý chọn sai',
-        isCorrect: allCorrect,
-      })
-
-      // Show a button to continue instead of auto timeout, since they need time to read feedback
-      const continueBtn = document.createElement('button')
-      continueBtn.className = 'tf-submit-btn'
-      continueBtn.innerText = 'Tiếp tục'
-      continueBtn.style.marginTop = '15px'
-      continueBtn.style.background = '#10b981'
-      continueBtn.addEventListener('click', () => {
-        currentQuizIndex++
-        showQuizQuestion()
-      })
-      document.querySelector('.tf-container').appendChild(continueBtn)
-    })
-  }
-
-  function renderSentenceBuilderQuestion(q) {
-    const distractorsCount = q.distractors ? q.distractors.length : 0
-    const piecesCount = q.correctOrder ? q.correctOrder.length : 0
-
-    quizOptions.innerHTML = `
-      <div class="sb-hint" style="margin-bottom: 15px; color: #0284c7; background: #e0f2fe; padding: 12px; border-radius: 8px; font-size: 0.95rem; border-left: 4px solid #0284c7; line-height: 1.5;">
-        💡 <strong>Gợi ý:</strong> Câu hoàn chỉnh được ghép từ <strong>${piecesCount}</strong> cụm từ. 
-        <br><span style="font-size: 0.85rem; color: #64748b;">(Lưu ý: Có <strong>${distractorsCount}</strong> phương án gây nhiễu dư thừa)</span>
-      </div>
-      <div class="sentence-build-area" id="sb-area"></div>
-      <div class="word-bank" id="sb-bank"></div>
-      <button class="sb-submit-btn" id="sb-submit">Xác nhận câu</button>
-    `
-
-    const sbArea = document.getElementById('sb-area')
-    const sbBank = document.getElementById('sb-bank')
-    const sbSubmit = document.getElementById('sb-submit')
-
-    // Combine correct order and distractors, then shuffle
-    const words = [...q.correctOrder, ...(q.distractors || [])].sort(
-      () => Math.random() - 0.5,
-    )
-
-    words.forEach((word, index) => {
-      const btn = document.createElement('button')
-      btn.className = 'word-btn'
-      btn.innerText = word
-      btn.dataset.word = word
-
-      btn.addEventListener('click', () => {
-        if (btn.parentElement === sbBank) {
-          // Move to area as a chip
-          const chip = document.createElement('div')
-          chip.className = 'sentence-chip'
-          chip.innerText = word
-          chip.dataset.word = word
-          chip.addEventListener('click', () => {
-            sbArea.removeChild(chip)
-            btn.style.display = 'inline-block'
-          })
-          sbArea.appendChild(chip)
-          btn.style.display = 'none'
-        }
-      })
-      sbBank.appendChild(btn)
-    })
-
-    sbSubmit.addEventListener('click', () => {
-      const chips = Array.from(sbArea.children)
-      const userSen = chips.map((c) => c.dataset.word)
-
-      // Validation
-      const isCorrect =
-        JSON.stringify(userSen) === JSON.stringify(q.correctOrder)
-
-      if (isCorrect) score++
-
-      userAnswers.push({
-        q: q.prompt,
-        options: `[${userSen.join(' ')}]`,
-        ans: q.correctOrder.join(' '),
-        sel: isCorrect ? q.correctOrder.join(' ') : userSen.join(' '),
-        isCorrect: isCorrect,
-      })
-
-      // Delay to allow review
-      if (isCorrect) {
-        playSound('correct')
-        sbArea.style.borderColor = '#10b981' // green border
-        sbArea.style.backgroundColor = '#d1fae5'
-      } else {
-        playSound('wrong')
-        sbArea.style.borderColor = '#ef4444' // red border
-        sbArea.style.backgroundColor = '#fee2e2'
-        sbArea.classList.add('shake')
-      }
-
-      setTimeout(() => {
-        currentQuizIndex++
-        showQuizQuestion()
-      }, 1000)
-    })
-  }
-
-  function renderFillBlankQuestion(q) {
-    const parts = q.prompt.split('[___]')
-    if (parts.length === 1) parts.push('')
-
-    quizQuestionText.innerHTML = `
-      <div class="fill-blank-text">
-        ${parts[0]}<span id="blank-spot" class="blank-spot">   </span>${parts[1]}
-      </div>
-      <div class="word-bank" id="word-bank"></div>
-    `
-
-    const wordBank = document.getElementById('word-bank')
-    const options = [...q.options].sort(() => Math.random() - 0.5)
-
-    options.forEach((opt) => {
-      const btn = document.createElement('button')
-      btn.className = 'word-btn'
-      btn.innerText = opt
-      btn.addEventListener('click', () =>
-        handleFillBlankSelect(btn, opt, q.answer, q),
+    const results = appData.diseases.filter((disease) => {
+      const titleMatch = normalize(disease.title).includes(q)
+      const keywordMatch = disease.keywords.some(
+        (k) => normalize(k).includes(q) || q.includes(normalize(k)),
       )
-      wordBank.appendChild(btn)
+      const categoryMatch = normalize(disease.category).includes(q)
+      return titleMatch || keywordMatch || categoryMatch
+    })
+
+    const fuzzyResults = getFuzzyResults(q)
+    const merged = [...results]
+    fuzzyResults.forEach((disease) => {
+      if (!merged.some((item) => item.id === disease.id)) {
+        merged.push(disease)
+      }
+    })
+
+    const suggestions = getSearchSuggestions(q)
+    const shouldShowSuggestion = results.length === 0
+
+    if (shouldShowSuggestion) {
+      renderSearchSuggestions(query.trim(), suggestions)
+    } else {
+      clearSearchSuggestions()
+    }
+
+    searchResultsSection.classList.remove('hidden')
+    renderResults(merged.slice(0, 20), query)
+  }
+
+  function renderResults(results) {
+    resultsContainer.innerHTML = ''
+
+    if (results.length === 0) {
+      resultsContainer.innerHTML =
+        '<p class="text-muted">Không tìm thấy kết quả phù hợp.</p>'
+      return
+    }
+
+    results.forEach((disease) => {
+      const card = document.createElement('div')
+      card.className = 'result-card'
+      card.innerHTML = `
+        <div>
+          <div class="result-title">${disease.title}</div>
+          <small class="text-muted">${disease.category}</small>
+        </div>
+        <i class="fa-solid fa-chevron-right" style="color:#9ca3af"></i>
+      `
+      card.addEventListener('click', () => openDisease(disease))
+      resultsContainer.appendChild(card)
     })
   }
 
-  function handleFillBlankSelect(btnElement, selectedOpt, correctOpt, q) {
-    const blankSpot = document.getElementById('blank-spot')
-    if (!blankSpot) return
+  searchInput.addEventListener('input', () => {
+    handleSearch(searchInput.value)
+  })
 
-    const allBtns = document.querySelectorAll('.word-btn')
-    allBtns.forEach((b) => (b.style.pointerEvents = 'none'))
+  // =================== VOICE SEARCH ===================
+  function initVoiceSearch() {
+    const SpeechRecognition =
+      window.SpeechRecognition || window.webkitSpeechRecognition
+    if (!SpeechRecognition) {
+      btnVoiceSearch.title = 'Trình duyệt của bạn không hỗ trợ giọng nói'
+      btnVoiceSearch.style.opacity = '0.4'
+      return
+    }
 
-    btnElement.classList.add('used')
-    blankSpot.innerText = selectedOpt
-    blankSpot.classList.add('filled')
+    const recognition = new SpeechRecognition()
+    recognition.lang = 'vi-VN'
+    recognition.interimResults = false
+    recognition.maxAlternatives = 1
 
-    userAnswers.push({
-      q: q.prompt,
-      options: q.options,
-      ans: correctOpt,
-      sel: selectedOpt,
+    let listening = false
+
+    btnVoiceSearch.addEventListener('click', () => {
+      if (listening) return
+      listening = true
+      recognition.start()
+      btnVoiceSearch.innerHTML =
+        '<i class="fa-solid fa-circle-dot" style="color:red;animation:blink 1s infinite"></i>'
     })
 
-    if (selectedOpt === correctOpt) {
-      playSound('correct')
-      blankSpot.classList.add('correct-fill')
-      score++
-    } else {
-      playSound('wrong')
-      blankSpot.classList.add('wrong-fill')
-      blankSpot.classList.add('shake')
-      blankSpot.innerHTML += ` <span style="font-size: 0.8em; color: var(--color-success); font-weight: bold;">(${correctOpt})</span>`
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript
+      searchInput.value = transcript
+      handleSearch(transcript)
     }
 
-    setTimeout(() => {
-      currentQuizIndex++
-      showQuizQuestion()
-    }, 1800)
-  }
-
-  function endQuiz(timesUp = false) {
-    stopTimer()
-    switchView('view-result')
-    const total = quizQuestions.length
-    const percentage = Math.round((score / total) * 100)
-
-    document.getElementById('score-text').innerText = `${percentage}%`
-    document.getElementById('correct-count').innerText = score
-    document.getElementById('wrong-count').innerText = total - score
-
-    // Bắn pháo giấy và phát âm thanh hoàn thành nếu làm tốt
-    playSound('complete')
-
-    // Hệ thống danh hiệu / Lời khen
-    const rewardBadge = document.getElementById('reward-badge')
-    const rewardMessage = document.getElementById('reward-message')
-
-    // Reset Trạng thái
-    rewardBadge.style.display = 'inline-block'
-    rewardBadge.style.animation = 'none'
-    rewardBadge.offsetHeight /* trigger reflow */
-    rewardBadge.style.animation = null
-
-    if (percentage === 100) {
-      rewardBadge.innerText = '🏆'
-      rewardMessage.innerText = 'Xuất sắc tuyệt đối! Bạn là quán quân KHTN 7!'
-      rewardMessage.style.color = '#ef4444' // Đỏ nổi bật
-      if (window.confetti) {
-        window.confetti({ particleCount: 200, spread: 100, origin: { y: 0.6 } })
-      }
-    } else if (percentage >= 80) {
-      rewardBadge.innerText = '🥇'
-      rewardMessage.innerText = 'Tuyệt vời! Kiến thức của bạn rất vững!'
-      rewardMessage.style.color = 'var(--color-primary)'
-      if (window.confetti) {
-        window.confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } })
-      }
-    } else if (percentage >= 60) {
-      rewardBadge.innerText = '🥈'
-      rewardMessage.innerText =
-        'Khá lắm! Cố gắng thêm chút nữa để đạt điểm tối đa nha.'
-      rewardMessage.style.color = 'var(--color-secondary)'
-    } else if (percentage >= 40) {
-      rewardBadge.innerText = '🥉'
-      rewardMessage.innerText =
-        'Bạn đạt mức trung bình. Hãy xem lại các câu sai nhé.'
-      rewardMessage.style.color = '#f59e0b' // Vàng cam
-    } else {
-      rewardBadge.innerText = '📚'
-      rewardMessage.innerText =
-        'Đừng nản lòng! Ôn lại Thẻ Học và thử lại lần nữa nào!'
-      rewardMessage.style.color = '#64748b' // Xám
+    recognition.onend = () => {
+      listening = false
+      btnVoiceSearch.innerHTML = '<i class="fa-solid fa-microphone"></i>'
     }
 
-    const reviewList = document.getElementById('review-list')
-    if (reviewList) {
-      reviewList.innerHTML = ''
-      userAnswers.forEach((ans, i) => {
-        const isCorrect = ans.sel === ans.ans
-        const color = isCorrect ? '#007bff' : 'var(--color-error)'
-        const correctMarkup = !isCorrect
-          ? `<br><span style="color:#007bff">Đáp án đúng: ${ans.ans}</span>`
-          : ''
-
-        reviewList.innerHTML += `
-          <div style="padding: 1rem 0; border-bottom: 1px solid #ddd;">
-            <p style="font-weight: 600; margin-bottom: 0.25rem;">Câu ${i + 1}: ${ans.q}</p>
-            <span style="color: ${color}; font-weight: 500;">Bạn chọn: ${ans.sel}</span>
-            ${correctMarkup}
-          </div>
-        `
-      })
-    }
-
-    if (timesUp) {
-      alert('Hết giờ làm bài!')
+    recognition.onerror = (event) => {
+      listening = false
+      btnVoiceSearch.innerHTML = '<i class="fa-solid fa-microphone"></i>'
+      console.log('Voice recognition error: ', event.error)
     }
   }
 
-  document.getElementById('btn-review').addEventListener('click', () => {
-    const rc = document.getElementById('review-container')
-    if (rc.style.display === 'none') {
-      rc.style.display = 'block'
-      document.getElementById('btn-review').innerText = 'Ẩn đáp án'
-    } else {
-      rc.style.display = 'none'
-      document.getElementById('btn-review').innerText = 'Xem lại câu hỏi'
-    }
-  })
+  initVoiceSearch()
 
-  document.getElementById('btn-retry').addEventListener('click', () => {
-    switchView('view-quiz-setup')
-  })
-
-  document.getElementById('btn-home').addEventListener('click', () => {
-    navItems.forEach((n) => n.classList.remove('active'))
-    document
-      .querySelector('.nav-item[data-target="view-home"]')
-      .classList.add('active')
-    switchView('view-home')
-  })
-  function renderEquationFillQuestion(q) {
-    const container = document.getElementById('quiz-options')
-    container.innerHTML = ''
-
-    if (!userAnswers[currentQuizIndex]) {
-      userAnswers[currentQuizIndex] = {
-        slot1: null,
-        slot2: null,
-      }
+  // =================== DISEASE DETAIL ===================
+  function getTreatmentMedia(disease) {
+    if (
+      Array.isArray(disease.treatment.media) &&
+      disease.treatment.media.length
+    ) {
+      return disease.treatment.media
     }
 
-    const eqContainer = document.createElement('div')
-    eqContainer.className = 'equation-container'
+    if (disease.treatment.image) {
+      return [
+        {
+          src: disease.treatment.image,
+          caption: disease.title,
+        },
+      ]
+    }
 
-    const reactantsDiv = document.createElement('div')
-    reactantsDiv.className = 'eq-side eq-reactants'
+    return []
+  }
 
-    q.equation.reactants.forEach((item) => {
-      if (item.type === 'text') {
-        const span = document.createElement('span')
-        span.textContent = item.value
-        reactantsDiv.appendChild(span)
-      } else if (item.type === 'operator') {
-        const span = document.createElement('span')
-        span.className = 'eq-operator'
-        span.textContent = item.value
-        reactantsDiv.appendChild(span)
-      } else if (item.type === 'slot') {
-        const slot = document.createElement('div')
-        slot.className = 'eq-slot'
-        slot.dataset.slotId = item.id
+  function renderTreatmentMedia(mediaItems) {
+    detailMediaList.innerHTML = ''
 
-        const val = userAnswers[currentQuizIndex][item.id]
-        if (val) {
-          slot.textContent = val
-          slot.classList.add('filled')
-        } else {
-          slot.textContent = '?'
-        }
+    if (!mediaItems.length) {
+      detailImagePlaceholder.classList.remove('hidden')
+      return
+    }
 
-        slot.addEventListener('click', () => {
-          if (slot.classList.contains('filled')) {
-            userAnswers[currentQuizIndex][item.id] = null
-            renderEquationFillQuestion(q)
-          }
-        })
-        reactantsDiv.appendChild(slot)
-      }
-    })
+    detailImagePlaceholder.classList.add('hidden')
 
-    const arrowDiv = document.createElement('div')
-    arrowDiv.className = 'eq-arrow-container'
-    const arrowTop = document.createElement('div')
-    arrowTop.className = 'eq-arrow-label'
-    arrowTop.textContent = q.equation.arrows.top
-    const arrowGraphic = document.createElement('div')
-    arrowGraphic.className = 'eq-arrow-line'
-    arrowGraphic.innerHTML = '&#10230;'
-    const arrowBottom = document.createElement('div')
-    arrowBottom.className = 'eq-arrow-label'
-    arrowBottom.textContent = q.equation.arrows.bottom
-    arrowDiv.appendChild(arrowTop)
-    arrowDiv.appendChild(arrowGraphic)
-    arrowDiv.appendChild(arrowBottom)
+    mediaItems.forEach((item) => {
+      const figure = document.createElement('figure')
+      figure.className = 'media-item'
 
-    const productsDiv = document.createElement('div')
-    productsDiv.className = 'eq-side eq-products'
+      const image = document.createElement('img')
+      image.src = item.src
+      image.alt = item.caption || detailTitle.textContent
+      image.loading = 'lazy'
 
-    q.equation.products.forEach((item) => {
-      if (item.type === 'text') {
-        const span = document.createElement('span')
-        span.textContent = item.value
-        productsDiv.appendChild(span)
-      } else if (item.type === 'operator') {
-        const span = document.createElement('span')
-        span.className = 'eq-operator'
-        span.textContent = item.value
-        productsDiv.appendChild(span)
-      } else if (item.type === 'slot') {
-        const slot = document.createElement('div')
-        slot.className = 'eq-slot'
-        slot.dataset.slotId = item.id
-
-        const val = userAnswers[currentQuizIndex][item.id]
-        if (val) {
-          slot.textContent = val
-          slot.classList.add('filled')
-        } else {
-          slot.textContent = '?'
-        }
-
-        slot.addEventListener('click', () => {
-          if (slot.classList.contains('filled')) {
-            userAnswers[currentQuizIndex][item.id] = null
-            renderEquationFillQuestion(q)
-          }
-        })
-        productsDiv.appendChild(slot)
-      }
-    })
-
-    eqContainer.appendChild(reactantsDiv)
-    eqContainer.appendChild(arrowDiv)
-    eqContainer.appendChild(productsDiv)
-
-    container.appendChild(eqContainer)
-
-    const hint = document.createElement('div')
-    hint.className = 'sc-hint'
-    hint.innerText =
-      'Chạm vào từ bên dưới để điền vào ô trống. Chạm vào ô đã điền để chọn lại.'
-    container.appendChild(hint)
-
-    const wordBankDiv = document.createElement('div')
-    wordBankDiv.className = 'eq-wordbank'
-
-    q.wordBank.forEach((word) => {
-      const isUsed = Object.values(userAnswers[currentQuizIndex]).includes(word)
-
-      const chip = document.createElement('button')
-      chip.className = 'eq-chip'
-      chip.textContent = word
-      if (isUsed) {
-        chip.disabled = true
-        chip.classList.add('used')
-      }
-
-      chip.addEventListener('click', () => {
-        const ansObj = userAnswers[currentQuizIndex]
-        let firstEmpty = null
-        if (!ansObj.slot1) firstEmpty = 'slot1'
-        else if (!ansObj.slot2) firstEmpty = 'slot2'
-
-        if (firstEmpty) {
-          ansObj[firstEmpty] = word
-          renderEquationFillQuestion(q)
+      image.addEventListener('error', () => {
+        figure.remove()
+        if (!detailMediaList.children.length) {
+          detailImagePlaceholder.classList.remove('hidden')
         }
       })
 
-      wordBankDiv.appendChild(chip)
+      const caption = document.createElement('figcaption')
+      caption.textContent = item.caption || detailTitle.textContent
+
+      figure.appendChild(image)
+      figure.appendChild(caption)
+      detailMediaList.appendChild(figure)
     })
-
-    container.appendChild(wordBankDiv)
-
-    const submitBtn = document.createElement('button')
-    submitBtn.className = 'btn fill'
-    submitBtn.textContent = 'Kiểm tra'
-    submitBtn.style.marginTop = '20px'
-    submitBtn.disabled = !(
-      userAnswers[currentQuizIndex].slot1 && userAnswers[currentQuizIndex].slot2
-    )
-    submitBtn.addEventListener('click', () => checkEquationFillAnswer(q))
-    container.appendChild(submitBtn)
   }
 
-  function checkEquationFillAnswer(q) {
-    const ansObj = userAnswers[currentQuizIndex]
-    const isCorrect =
-      ansObj.slot1 === q.correctSlots.slot1 &&
-      ansObj.slot2 === q.correctSlots.slot2
+  function openDisease(disease) {
+    detailTitle.textContent = disease.title
+    detailCategory.textContent = disease.category
 
-    const slots = document.querySelectorAll('.eq-slot')
-    slots.forEach((slot) => {
-      const sId = slot.dataset.slotId
-      if (ansObj[sId] === q.correctSlots[sId]) {
-        slot.classList.add('correct')
+    renderTreatmentMedia(getTreatmentMedia(disease))
+
+    detailInstruction.innerHTML = disease.treatment.instructions
+    detailNotes.innerHTML =
+      disease.symptoms || '<p class="text-muted">Chưa có thông tin.</p>'
+
+    // Videos
+    renderVideos(disease.videos)
+
+    switchView('view-detail')
+    document.querySelector('.app-main').scrollTop = 0
+  }
+
+  function renderVideos(videos) {
+    detailVideos.innerHTML = ''
+
+    const count = 3
+    for (let i = 0; i < count; i++) {
+      const slot = document.createElement('div')
+      if (videos && videos[i]) {
+        // Render iframe embed
+        const videoId = extractYoutubeId(videos[i])
+        if (videoId) {
+          slot.className = 'video-embed'
+          slot.innerHTML = `<iframe src="https://www.youtube.com/embed/${videoId}" frameborder="0" allowfullscreen loading="lazy"></iframe>`
+        } else {
+          slot.className = 'video-placeholder'
+          slot.innerHTML = `<span>Video ${i + 1}</span>`
+        }
       } else {
-        slot.classList.add('incorrect')
+        slot.className = 'video-placeholder'
+        slot.innerHTML = `<span>Video ${i + 1} (chưa có link)</span>`
       }
-      slot.style.pointerEvents = 'none'
-    })
-
-    const wordBank = document.querySelector('.eq-wordbank')
-    if (wordBank) wordBank.style.display = 'none'
-
-    const container = document.getElementById('quiz-options')
-
-    const feedbackEl = document.createElement('div')
-    feedbackEl.style.padding = '15px'
-    feedbackEl.style.marginTop = '20px'
-    feedbackEl.style.borderRadius = '8px'
-    feedbackEl.style.backgroundColor = isCorrect ? '#dcfce7' : '#fee2e2'
-    feedbackEl.style.color = isCorrect ? '#166534' : '#991b1b'
-    feedbackEl.innerHTML =
-      '<strong>' +
-      (isCorrect ? 'Tuyệt vời! ' : 'Chưa chính xác. ') +
-      '</strong>' +
-      (q.explanation || '')
-
-    if (!isCorrect) {
-      feedbackEl.classList.add('shake')
+      detailVideos.appendChild(slot)
     }
-
-    container.appendChild(feedbackEl)
-
-    if (isCorrect) {
-      playSound('correct')
-      score++
-    } else {
-      playSound('wrong')
-    }
-
-    userAnswers[currentQuizIndex] = {
-      q: 'Phản ứng quang hợp',
-      options: ['Điền phương trình'],
-      ans: 'Đúng',
-      sel: isCorrect ? 'Đúng' : 'Sai',
-    }
-
-    const oldBtns = container.querySelectorAll('.btn.fill')
-    oldBtns.forEach((b) => (b.style.display = 'none'))
-
-    const continueBtn = document.createElement('button')
-    continueBtn.className = 'btn fill'
-    continueBtn.innerText = 'Tiếp tục'
-    continueBtn.style.marginTop = '15px'
-    continueBtn.style.background = '#10b981'
-    continueBtn.addEventListener('click', () => {
-      currentQuizIndex++
-      showQuizQuestion()
-    })
-    container.appendChild(continueBtn)
   }
+
+  function extractYoutubeId(url) {
+    const match = url.match(
+      /(?:youtube\.com\/(?:[^/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?/\s]{11})/,
+    )
+    return match ? match[1] : null
+  }
+
+  // =================== DIAGRAM VIEW ===================
+  function getDiagramSections() {
+    if (!Array.isArray(appData.diagramSections)) {
+      return []
+    }
+
+    return appData.diagramSections.filter((section) => {
+      return section && section.id && Array.isArray(section.items)
+    })
+  }
+
+  function renderDiagramItems(items) {
+    diagramGallery.innerHTML = ''
+
+    if (!items.length) {
+      diagramEmpty.classList.remove('hidden')
+      return
+    }
+
+    diagramEmpty.classList.add('hidden')
+
+    items.forEach((item) => {
+      const figure = document.createElement('figure')
+      figure.className = 'diagram-card'
+
+      const image = document.createElement('img')
+      image.src = item.src
+      image.alt = item.caption || 'Đồ hình'
+      image.loading = 'lazy'
+      image.addEventListener('error', () => {
+        figure.remove()
+        if (!diagramGallery.children.length) {
+          diagramEmpty.classList.remove('hidden')
+        }
+      })
+
+      const caption = document.createElement('figcaption')
+      caption.textContent = item.caption || 'Không có chú thích'
+
+      figure.appendChild(image)
+      figure.appendChild(caption)
+      diagramGallery.appendChild(figure)
+    })
+  }
+
+  function renderDiagramView() {
+    if (!diagramTabs || !diagramGallery || !diagramEmpty) {
+      return
+    }
+
+    const sections = getDiagramSections()
+    diagramTabs.innerHTML = ''
+
+    if (!sections.length) {
+      diagramGallery.innerHTML = ''
+      diagramEmpty.classList.remove('hidden')
+      return
+    }
+
+    const hasActiveSection = sections.some(
+      (section) => section.id === activeDiagramSectionId,
+    )
+    if (!hasActiveSection) {
+      activeDiagramSectionId = sections[0].id
+    }
+
+    sections.forEach((section) => {
+      const button = document.createElement('button')
+      button.type = 'button'
+      button.className = 'diagram-tab'
+      button.textContent = `${section.title} (${section.items.length})`
+      button.setAttribute('aria-pressed', section.id === activeDiagramSectionId)
+      button.classList.toggle('active', section.id === activeDiagramSectionId)
+
+      button.addEventListener('click', () => {
+        activeDiagramSectionId = section.id
+        renderDiagramView()
+      })
+
+      diagramTabs.appendChild(button)
+    })
+
+    const selectedSection =
+      sections.find((section) => section.id === activeDiagramSectionId) ||
+      sections[0]
+    renderDiagramItems(selectedSection.items)
+  }
+
+  // =================== TEXT TO SPEECH ===================
+  let utterance = null
+  let isSpeaking = false
+
+  function getPlainText(html) {
+    const d = document.createElement('div')
+    d.innerHTML = html
+    return d.textContent || d.innerText || ''
+  }
+
+  btnReadInstruction.addEventListener('click', () => {
+    if (!('speechSynthesis' in window)) {
+      alert('Trình duyệt không hỗ trợ đọc giọng nói.')
+      return
+    }
+
+    if (isSpeaking) {
+      window.speechSynthesis.cancel()
+      isSpeaking = false
+      btnReadInstruction.innerHTML =
+        '<i class="fa-solid fa-volume-high"></i> Nghe'
+      return
+    }
+
+    const text = getPlainText(detailInstruction.innerHTML)
+    utterance = new SpeechSynthesisUtterance(text)
+    utterance.lang = 'vi-VN'
+    utterance.rate = 0.85
+    utterance.pitch = 1
+
+    // Auto-select voice: prefer female Vi, then male Vi, then any Vi
+    const allVoices = window.speechSynthesis.getVoices()
+    const viVoices = allVoices.filter((v) => v.lang.startsWith('vi'))
+    const femaleVoice = viVoices.find((v) =>
+      /female|nu|woman|girl/i.test(v.name),
+    )
+    const maleVoice = viVoices.find((v) => /male|nam|man|boy/i.test(v.name))
+    const selectedVoice = femaleVoice || maleVoice || viVoices[0] || null
+    if (selectedVoice) utterance.voice = selectedVoice
+
+    utterance.onend = () => {
+      isSpeaking = false
+      btnReadInstruction.innerHTML =
+        '<i class="fa-solid fa-volume-high"></i> Nghe'
+    }
+
+    isSpeaking = true
+    btnReadInstruction.innerHTML = '<i class="fa-solid fa-stop"></i> Dừng'
+    window.speechSynthesis.speak(utterance)
+  })
+
+  // =================== ACCORDION ===================
+  function initAccordions() {
+    document.querySelectorAll('.accordion-header').forEach((header) => {
+      header.addEventListener('click', function () {
+        const expanded = this.getAttribute('aria-expanded') === 'true'
+        const content = this.nextElementSibling
+
+        this.setAttribute('aria-expanded', !expanded)
+
+        if (!expanded) {
+          content.style.maxHeight = content.scrollHeight + 'px'
+        } else {
+          content.style.maxHeight = '0'
+        }
+      })
+    })
+  }
+
+  initAccordions()
+
+  // =================== INIT ===================
+  renderTags()
+  renderDiagramView()
 })

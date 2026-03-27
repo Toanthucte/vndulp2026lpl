@@ -2,48 +2,24 @@
 <html lang="vi">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>KHTN 7 - Ứng Dụng Học Tập</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <title>Việt Nam Đồng Ứng Liệu Pháp</title>
     <meta
       name="description"
-      content="Thẻ học thông minh và bài kiểm tra cá nhân hóa môn Khoa học Tự nhiên 7."
+      content="Ứng dụng tra cứu bệnh và cách tự chữa gỡ bằng phương pháp Đồng Ứng."
     />
-
-    <!-- Open Graph / Facebook / Zalo / Zalo PC -->
-    <meta property="og:type" content="website" />
-    <meta
-      property="og:url"
-      content="https://toanthucte.github.io/App-KHTN-7-GK2/"
-    />
-    <meta property="og:title" content="KHTN 7 - Ôn Tập & Kiểm Tra" />
-    <meta
-      property="og:description"
-      content="Khám phá ngay bộ thẻ học thông minh và làm bài tập trắc nghiệm KHTN 7 trực tuyến. Nhanh chóng, hiệu quả, phù hợp học sinh!"
-    />
-    <!-- Bạn cần thay đường dẫn bên dưới bằng một ảnh logo/banner của riêng bạn sau này -->
-    <meta property="og:image" content="./assets/icons/icon-512x512.png" />
-
-    <!-- Twitter -->
-    <meta property="twitter:card" content="summary_large_image" />
-    <meta
-      property="twitter:url"
-      content="https://toanthucte.github.io/App-KHTN-7-GK2/"
-    />
-    <meta property="twitter:title" content="KHTN 7 - Ôn Tập & Kiểm Tra" />
-    <meta
-      property="twitter:description"
-      content="Khám phá ngay bộ thẻ học thông minh và làm bài tập trắc nghiệm KHTN 7 trực tuyến. Nhanh chóng, hiệu quả, phù hợp học sinh!"
-    />
-    <!-- Bạn cần thay đường dẫn bên dưới bằng một ảnh logo/banner của riêng bạn sau này -->
-    <meta property="twitter:image" content="./assets/icons/icon-512x512.png" />
 
     <!-- PWA -->
     <link rel="manifest" href="./manifest.json" />
-    <link rel="icon" type="image/x-icon" href="./favicon.ico" />
-    <meta name="theme-color" content="#023047" />
-
-    <!-- Canvas Confetti -->
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="./assets/icons/logo-vndulp-softwave.svg"
+    />
+    <meta name="theme-color" content="#134e4a" />
 
     <!-- Font -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -68,218 +44,259 @@
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker
-            .register('./sw.js')
-            .then((reg) => {
-              console.log('SW registered:', reg)
-            })
-            .catch((err) => console.log('SW registration failed:', err))
+          navigator.serviceWorker.register('./sw.js').catch((error) => {
+            console.error('Service worker registration failed:', error)
+          })
         })
       }
     </script>
   </head>
   <body>
-    <!-- Top Header with Timer (if active) -->
+    <!-- Top Header -->
     <header class="app-header">
-      <h1 id="app-title">KHTN 7 - Ôn Tập</h1>
+      <div class="header-left">
+        <button id="btn-back" class="icon-btn hidden" aria-label="Quay lại">
+          <i class="fa-solid fa-arrow-left"></i>
+        </button>
+      </div>
+      <h1>
+        <span class="app-brand">
+          <img
+            src="./assets/icons/logo-vndulp-softwave.svg"
+            alt="Logo VNĐƯLP"
+            class="app-logo"
+          />
+          <span id="app-title">Đồng Ứng Liệu Pháp</span>
+        </span>
+      </h1>
       <div class="header-controls">
-        <div id="timer-display" class="hidden">00:00</div>
-        <button
-          id="btn-sound-toggle"
-          class="icon-btn"
-          aria-label="Bật/tắt âm thanh"
-        >
-          <i class="fas fa-volume-up"></i>
+        <button id="btn-info" class="icon-btn" aria-label="Thông tin">
+          <i class="fa-solid fa-circle-info"></i>
         </button>
       </div>
     </header>
 
     <!-- Main Content Area -->
     <main class="app-main" id="app-main">
-      <!-- Views injected here dynamically using JS -->
+      <!-- Trang Chủ -->
       <section id="view-home" class="view active">
-        <h2>Bạn muốn ôn tập phần nào?</h2>
-        <div class="topic-grid" id="topic-container">
-          <!-- JS load list of topics -->
+        <div class="search-section">
+          <h2>Bạn cần tra cứu bệnh gì?</h2>
+          <div class="search-box">
+            <i class="fa-solid fa-magnifying-glass search-icon"></i>
+            <input
+              type="text"
+              id="search-input"
+              placeholder="VD: Nhức đầu, Mất ngủ, Đau lưng..."
+              autocomplete="off"
+            />
+            <button
+              id="btn-voice-search"
+              class="icon-btn voice-btn"
+              aria-label="Tìm kiếm giọng nói"
+            >
+              <i class="fa-solid fa-microphone"></i>
+            </button>
+          </div>
+        </div>
+
+        <div
+          id="search-suggestion-section"
+          class="search-suggestion-section hidden"
+        >
+          <div id="search-suggestion-container"></div>
+        </div>
+
+        <div class="suggested-tags-section">
+          <h3><i class="fa-solid fa-fire text-accent"></i> Tra cứu phổ biến</h3>
+          <div class="tags-container" id="tags-container">
+            <!-- JS Render -->
+          </div>
+        </div>
+
+        <div class="search-results-section hidden" id="search-results-section">
+          <h3>Kết quả tìm kiếm</h3>
+          <div class="results-container" id="results-container">
+            <!-- JS Render -->
+          </div>
         </div>
       </section>
 
-      <!-- Flashcards View -->
-      <section id="view-flashcards" class="view">
-        <div class="flashcard-container" id="flashcard-box">
-          <!-- 1 touch flip inner -->
-          <div class="flashcard-inner">
-            <div class="flashcard-front">
-              <div class="fc-content">
-                <p id="fc-front-text">Front</p>
+      <!-- Trang Chi tiết Bệnh -->
+      <section id="view-detail" class="view hidden">
+        <div class="detail-header">
+          <h2 id="detail-title">Tên Bệnh</h2>
+          <span class="category-badge" id="detail-category">Danh mục</span>
+        </div>
+
+        <div class="treatment-card">
+          <h3 class="treatment-title">
+            <i class="fa-solid fa-hand-holding-medical"></i> Chẩn & Trị
+          </h3>
+
+          <div class="media-container">
+            <div id="detail-media-list" class="media-list"></div>
+            <div id="detail-image-placeholder" class="media-placeholder">
+              Ảnh minh họa sẽ được cập nhật
+            </div>
+          </div>
+
+          <div class="instruction-box">
+            <div class="instruction-header">
+              <h4>Hướng dẫn theo tài liệu VNĐƯLP</h4>
+              <button
+                id="btn-read-instruction"
+                class="btn-tts"
+                aria-label="Đọc hướng dẫn"
+              >
+                <i class="fa-solid fa-volume-high"></i> Nghe
+              </button>
+            </div>
+            <div id="detail-instruction" class="instruction-text"></div>
+          </div>
+        </div>
+
+        <div class="accordion-container" id="detail-accordions">
+          <!-- Triệu chứng -->
+          <div class="accordion-item">
+            <button class="accordion-header" aria-expanded="false">
+              <div class="acc-title">
+                <i class="fa-solid fa-stethoscope"></i> Nguyên nhân & Triệu
+                chứng
               </div>
-              <div class="fc-hint">
-                <i class="fas fa-hand-pointer"></i> <span>Chạm để lật thẻ</span>
+              <i class="fa-solid fa-chevron-down acc-icon"></i>
+            </button>
+            <div class="accordion-content">
+              <div class="acc-inner" id="detail-notes"></div>
+            </div>
+          </div>
+
+          <!-- Video -->
+          <div class="accordion-item">
+            <button class="accordion-header" aria-expanded="false">
+              <div class="acc-title">
+                <i class="fa-brands fa-youtube"></i> Video Hướng Dẫn
+              </div>
+              <i class="fa-solid fa-chevron-down acc-icon"></i>
+            </button>
+            <div class="accordion-content">
+              <div class="acc-inner">
+                <p class="text-muted">
+                  <small>Video thực hành (sẽ được cập nhật):</small>
+                </p>
+                <div class="video-grid" id="detail-videos">
+                  <div class="video-placeholder"><span>Video 1</span></div>
+                  <div class="video-placeholder"><span>Video 2</span></div>
+                  <div class="video-placeholder"><span>Video 3</span></div>
+                </div>
               </div>
             </div>
-            <div class="flashcard-back">
-              <div class="fc-content">
-                <p id="fc-back-text">Back</p>
-              </div>
-              <div class="fc-hint">
-                <i class="fas fa-undo"></i> <span>Chạm để lật lại</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Các nút tự đánh giá (sẽ được hiển thị khi xem mặt sau) -->
-        <div class="fc-assessment-controls" id="fc-assessment-controls">
-          <button id="btn-fc-hard" class="btn-assess hard" title="Chưa thuộc">
-            <i class="fas fa-frown"></i> Khó
-          </button>
-          <button id="btn-fc-easy" class="btn-assess easy" title="Đã thuộc">
-            <i class="fas fa-smile"></i> Dễ
-          </button>
-        </div>
-
-        <div class="flashcard-controls">
-          <button id="btn-prev-card" class="btn btn-secondary">
-            <i class="fas fa-chevron-left"></i>
-          </button>
-          <span id="fc-progress">1 / 10</span>
-          <button id="btn-next-card" class="btn btn-primary">
-            <i class="fas fa-chevron-right"></i>
-          </button>
-        </div>
-      </section>
-
-      <!-- Quiz Setup View -->
-      <section id="view-quiz-setup" class="view">
-        <h2>Cài đặt Bài Kiểm Tra</h2>
-        <form id="quiz-setup-form" class="setup-form">
-          <div class="form-group">
-            <label for="quiz-time">Thời gian (phút):</label>
-            <input
-              type="number"
-              id="quiz-time"
-              name="quiz-time"
-              value="15"
-              min="1"
-              max="120"
-            />
-          </div>
-          <div class="form-group">
-            <label for="quiz-count">Số câu hỏi:</label>
-            <input
-              type="number"
-              id="quiz-count"
-              name="quiz-count"
-              value="10"
-              min="5"
-              max="50"
-            />
-          </div>
-          <button type="submit" class="btn btn-primary btn-block">
-            Bắt Đầu
-          </button>
-        </form>
-      </section>
-
-      <!-- Quiz Taking View -->
-      <section id="view-quiz" class="view">
-        <div class="quiz-container">
-          <div class="quiz-progress-bar">
-            <div id="quiz-progress-fill" class="fill"></div>
-          </div>
-          <p class="quiz-question-number" id="quiz-current-num">Câu 1/10:</p>
-          <h3 id="quiz-question-text" class="question-text">
-            Question goes here
-          </h3>
-          <div id="quiz-options" class="options-container">
-            <!-- Options rendered by JS -->
           </div>
         </div>
       </section>
 
-      <!-- Quiz Result View -->
-      <section id="view-result" class="view">
-        <h2>Kết Quả Của Bạn</h2>
-
-        <!-- Reward Badge / Avatar -->
-        <div
-          id="reward-badge"
-          style="font-size: 3rem; margin-top: 0.5rem; display: none"
-        >
-          🏆
-        </div>
-        <p
-          id="reward-message"
-          style="
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: var(--color-primary);
-            margin-top: 0.5rem;
-          "
-        ></p>
-
-        <div class="score-circle">
-          <span id="score-text">0%</span>
-        </div>
-        <div class="result-details">
-          <p>Số câu đúng: <strong id="correct-count">0</strong></p>
-          <p>Số câu sai: <strong id="wrong-count">0</strong></p>
+      <!-- Trang Đồ Hình -->
+      <section id="view-dohinh" class="view hidden">
+        <div class="diagram-header">
+          <h2>Hệ thống Đồ Hình</h2>
+          <p class="text-muted">
+            Tra cứu nhanh theo nhóm: Đồ hình, Lý thuyết và Thao tác.
+          </p>
         </div>
 
         <div
-          id="review-container"
-          style="
-            display: none;
-            margin-top: 1.5rem;
-            text-align: left;
-            width: 100%;
-            max-width: 600px;
-            margin-inline: auto;
-          "
-        >
-          <h3 style="margin-bottom: 1rem; text-align: center">
-            Xem Lại Đáp Án
-          </h3>
-          <div id="review-list"></div>
-        </div>
+          id="diagram-tabs"
+          class="diagram-tabs"
+          aria-label="Nhóm đồ hình"
+        ></div>
+        <div id="diagram-gallery" class="diagram-gallery"></div>
+        <p id="diagram-empty" class="text-muted hidden">
+          Chưa có ảnh trong nhóm này.
+        </p>
+      </section>
 
-        <div
-          style="
-            display: flex;
-            gap: 1rem;
-            width: 100%;
-            max-width: 400px;
-            margin: 1.5rem auto 0 auto;
-            flex-direction: column;
-          "
-        >
-          <button id="btn-review" class="btn btn-secondary btn-block">
-            Xem lại câu hỏi
-          </button>
-          <button id="btn-retry" class="btn btn-primary btn-block">
-            Làm Lại
-          </button>
-          <button id="btn-home" class="btn btn-secondary btn-block">
-            Về Trang Chủ
-          </button>
+      <!-- Trang Giới thiệu -->
+      <section id="view-about" class="view hidden">
+        <div class="about-card">
+          <h2>Nguyên lý VN Đồng Ứng Liệu Pháp</h2>
+          <p class="about-lead">
+            Việt Nam Đồng Ứng Liệu Pháp (VNĐƯLP) là phương pháp chăm sóc sức
+            khỏe không dùng thuốc, không dùng kim châm, tận dụng các phương tiện
+            cơ hữu của cơ thể để dò tìm và tác động vào Sinh Huyệt.
+          </p>
+
+          <h3>1. Nền tảng lý thuyết</h3>
+          <ul>
+            <li>
+              <strong>Đồng Ứng Trị Liệu Pháp:</strong> điều chỉnh rối loạn chức
+              năng bằng tác động cơ học phù hợp, không phụ thuộc vào thuốc.
+            </li>
+            <li>
+              <strong>Lý Đồng Ứng:</strong> dựa trên nguyên lý Âm Dương và mối
+              tương quan giữa các vùng cơ thể; vùng này có thể phản ánh và hỗ
+              trợ vùng khác.
+            </li>
+            <li>
+              <strong>Sinh Huyệt:</strong> điểm nhạy cảm xuất hiện khi cơ thể có
+              rối loạn, là cửa ngõ để khai thông khí huyết và tái lập cân bằng.
+            </li>
+          </ul>
+
+          <h3>2. Nguyên tắc xác định Sinh Huyệt</h3>
+          <ul>
+            <li><strong>Đồng Hình:</strong> tương đồng về hình dạng.</li>
+            <li>
+              <strong>Đồng Thế:</strong> tương đồng về tư thế, hướng vận động.
+            </li>
+            <li>
+              <strong>Đồng Thể:</strong> tương đồng về tính chất mô (mềm/cứng,
+              dày/mỏng).
+            </li>
+          </ul>
+
+          <h3>3. Mục tiêu ứng dụng</h3>
+          <ul>
+            <li>Hỗ trợ giảm triệu chứng và phục hồi chức năng sớm.</li>
+            <li>Tăng khả năng tự chăm sóc bản thân và gia đình.</li>
+            <li>Đề cao phòng bệnh, theo dõi cơ thể và điều chỉnh lối sống.</li>
+          </ul>
+
+          <h3>4. Tiểu sử tóm lược Thầy Lý Phước Lộc</h3>
+          <p>
+            Thầy Lý Phước Lộc là người hệ thống hóa và phát triển VNĐƯLP từ nền
+            tảng nghiên cứu Lý Đồng Ứng. Thầy từng là thành viên nhóm Nghiên Cứu
+            Diện Chẩn Điều Khiển Liệu Pháp của Thầy Bùi Quốc Châu từ năm 1981,
+            sau đó tiếp tục hoàn thiện phương pháp theo hướng đơn giản, dễ học,
+            dễ thực hành và phù hợp cộng đồng.
+          </p>
+          <p>
+            Từ năm 2012, Thầy đẩy mạnh phổ biến VNĐƯLP tại nhiều quốc gia như
+            Hoa Kỳ, Canada và châu Âu, với trọng tâm là giúp người học có thể tự
+            nhận biết vấn đề chức năng cơ thể và áp dụng thao tác an toàn, đúng
+            nguyên tắc.
+          </p>
+          <p class="about-note">
+            Lưu ý: Nội dung trong ứng dụng phục vụ mục đích tham khảo và hỗ trợ
+            tự chăm sóc. Trường hợp triệu chứng nặng hoặc kéo dài, cần khám cơ
+            sở y tế để được chẩn đoán và điều trị chính xác.
+          </p>
         </div>
       </section>
     </main>
 
     <!-- Bottom Navigation -->
     <nav class="bottom-nav">
+      <a href="#" class="nav-item" data-target="view-dohinh">
+        <i class="fa-solid fa-body-scan"></i>
+        <span>Đồ Hình</span>
+      </a>
       <a href="#" class="nav-item active" data-target="view-home">
-        <i class="fas fa-home"></i>
-        <span>Chủ đề</span>
+        <i class="fa-solid fa-house-medical"></i>
+        <span>Tra cứu</span>
       </a>
-      <a href="#" class="nav-item" data-target="view-flashcards-start">
-        <!-- Auto starts flashcards -->
-        <i class="fas fa-clone"></i>
-        <span>Thẻ Học</span>
-      </a>
-      <a href="#" class="nav-item" data-target="view-quiz-setup">
-        <i class="fas fa-list-check"></i>
-        <span>Kiểm tra</span>
+      <a href="#" class="nav-item" data-target="view-about">
+        <i class="fa-solid fa-book-medical"></i>
+        <span>Nguyên lý</span>
       </a>
     </nav>
   </body>

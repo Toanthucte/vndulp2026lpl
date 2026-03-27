@@ -1,0 +1,35 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="64" y1="64" x2="448" y2="448" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0F766E"/>
+      <stop offset="1" stop-color="#134E4A"/>
+    </linearGradient>
+    <linearGradient id="ring" x1="128" y1="96" x2="384" y2="416" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FDE68A"/>
+      <stop offset="1" stop-color="#D97706"/>
+    </linearGradient>
+    <filter id="softGlow" x="30" y="30" width="452" height="452" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+
+  <rect x="32" y="32" width="448" height="448" rx="124" fill="url(#bg)"/>
+
+  <g filter="url(#softGlow)">
+    <circle cx="256" cy="256" r="156" stroke="url(#ring)" stroke-width="18"/>
+    <path d="M256 106C296 106 328 138 328 178C328 214 301 245 266 250V262C301 267 328 298 328 334C328 374 296 406 256 406C216 406 184 374 184 334C184 298 211 267 246 262V250C211 245 184 214 184 178C184 138 216 106 256 106Z" stroke="#F8FAFC" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M285 161V191" stroke="#F8FAFC" stroke-width="11" stroke-linecap="round"/>
+    <path d="M270 176H300" stroke="#F8FAFC" stroke-width="11" stroke-linecap="round"/>
+    <path d="M212 336H242" stroke="#F8FAFC" stroke-width="11" stroke-linecap="round"/>
+  </g>
+
+  <path d="M100 256C126 256 152 224 178 224C204 224 230 256 256 256C282 256 308 288 334 288C360 288 386 256 412 256" stroke="#FDE68A" stroke-width="12" stroke-linecap="round" fill="none"/>
+  <path d="M174 399H338" stroke="#FDE68A" stroke-opacity="0.65" stroke-width="10" stroke-linecap="round"/>
+
+  <g transform="translate(160 436)">
+    <rect x="0" y="-16" width="48" height="30" rx="4" fill="#DA251D"/>
+    <polygon points="24,-10 26.11,-3.91 32.56,-3.78 27.42,0.11 29.29,6.28 24,2.6 18.71,6.28 20.58,0.11 15.44,-3.78 21.89,-3.91" fill="#FFDE00"/>
+    <text x="60" y="2" font-family="'Be Vietnam Pro', sans-serif" font-size="34" font-weight="700" fill="#F8FAFC" dominant-baseline="middle">DULP</text>
+  </g>
+</svg>

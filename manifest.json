@@ -1,12 +1,18 @@
 {
-  "name": "KHTN 7 - Ứng Dụng Học Tập",
-  "short_name": "KHTN 7",
-  "description": "App học tập ôn thi môn KHTN lớp 7",
+  "name": "Việt Nam Đồng Ứng Liệu Pháp",
+  "short_name": "VNĐƯLP",
+  "description": "Tra cứu bệnh và hướng dẫn thao tác chữa gỡ theo phương pháp Đồng Ứng của Thầy Lý Phước Lộc",
   "start_url": "index.html",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#219ebc",
+  "background_color": "#fafaf9",
+  "theme_color": "#134e4a",
   "icons": [
+    {
+      "src": "assets/icons/logo-vndulp-softwave.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
     {
       "src": "assets/icons/icon-192x192.png",
       "sizes": "192x192",

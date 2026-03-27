@@ -1,4 +1,4 @@
-const CACHE_NAME = 'khtn7-app-v26'
+const CACHE_NAME = 'vndulp-app-v1'
 const urlsToCache = [
   './',
   './index.html',
@@ -8,7 +8,7 @@ const urlsToCache = [
   './js/data.js',
   './js/app.js',
   './manifest.json',
-  'https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600&family=Montserrat:wght@500;600;700&display=swap',
+  'https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap',
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
 ]
 
@@ -27,8 +27,22 @@ self.addEventListener('fetch', (event) => {
         return response
       }
       return fetch(event.request).catch(() => {
-        // If offline and request fails
+        return response
       })
     }),
+  )
+})
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches
+      .keys()
+      .then((cacheNames) =>
+        Promise.all(
+          cacheNames
+            .filter((cacheName) => cacheName !== CACHE_NAME)
+            .map((cacheName) => caches.delete(cacheName)),
+        ),
+      ),
   )
 })

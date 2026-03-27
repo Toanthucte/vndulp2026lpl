@@ -1,0 +1,46 @@
+css_content = """:root {
+  /* Colors - Traditional/Medical Theme */
+  --color-primary: #134e4a; /* Deep green */
+  --color-secondary: #0f766e; /* Medium green */
+  --color-accent: #d97706; /* Earthy orange/brown */
+  --color-text: #27272a;
+  --color-bg: #fafaf9; /* Warm off-white */
+  --color-neutral: #f3f4f6;
+  --color-card-bg: #ffffff;
+  --color-border: #e5e7eb;
+  
+  --color-error: #ef4444;
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+
+  /* Typography Scale */
+  --font-family-heading: 'Be Vietnam Pro', sans-serif;
+  --font-family-body: 'Be Vietnam Pro', sans-serif;
+
+  --font-size-base: 1rem;
+  --font-size-h1: 2rem;
+  --font-size-h2: 1.5rem;
+  --font-size-h3: 1.25rem;
+  --font-size-h4: 1.125rem;
+  --font-size-p: 1rem;
+  --font-size-small: 0.875rem;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+
+  /* Borders */
+  --radius-md: 0.5rem;
+  --radius-lg: 1rem;
+  --radius-full: 9999px;
+
+  /* Layout */
+  --nav-height: 4.5rem;
+}
+"""
+
+with open(r"d:\@Online-2024\App-VNDULP2026LPL\vndulp2026lpl\theme.css", "w", encoding="utf-8") as f:
+    f.write(css_content)
+
+print("Updated theme.css")
