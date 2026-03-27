@@ -9,7 +9,7 @@
   }
 
   .tags-container {
-    justify-content: center;
+    justify-content: flex-start;
   }
 
   .nav-item {

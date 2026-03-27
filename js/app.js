@@ -52,9 +52,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const navItems = document.querySelectorAll('.nav-item')
   const btnBack = document.getElementById('btn-back')
   const btnInfo = document.getElementById('btn-info')
+  const appBrand = document.querySelector('.app-brand')
   const appTitle = document.getElementById('app-title')
   const searchInput = document.getElementById('search-input')
   const btnVoiceSearch = document.getElementById('btn-voice-search')
+  const btnClearSearch = document.getElementById('btn-clear-search')
+  const btnCloseSearch = document.getElementById('btn-close-search')
+  const searchOverlay = document.getElementById('search-overlay')
   const tagsContainer = document.getElementById('tags-container')
   const searchSuggestionSection = document.getElementById(
     'search-suggestion-section',
@@ -188,16 +192,70 @@ document.addEventListener('DOMContentLoaded', () => {
     switchView('view-about')
   })
 
+  if (appBrand) {
+    appBrand.addEventListener('click', () => {
+      switchView('view-home')
+    })
+  }
+
+  // =================== KHẨU QUYẾT / KIM NGÔN ===================
+  // ĐÁNH DẤU CHO BẠN: Bạn có thể thêm, sửa, hoặc xóa các câu ở định dạng bên dưới nhé.
+  const inspirationalQuotes = [
+    "Không có Bác sĩ nào giỏi bằng Cơ thể của Chúng ta.",
+    "Đồng mà Ứng thì dùng, Đồng mà Không Ứng thì không dùng.",
+    "Đau trên chỉnh dưới, đau trong chữa ngoài, đau lớn chữa nhỏ.",
+    "Bệnh do Tâm sinh, chữa bệnh phải chữa cả Tâm.",
+    "Con Mắt thuộc Tâm",
+    "Hình đồng Hình, Thế đồng Thế, Thể đồng Thể",
+    // Bạn hãy chép thêm câu mới vào đây, ví dụ:
+    // "Câu nói hay tiếp theo của bạn.",
+  ]
+
+  const quoteTextElement = document.getElementById('daily-quote-text')
+
+  function initDynamicQuotes() {
+    if (!quoteTextElement) return
+
+    let currentIndex = Math.floor(Math.random() * inspirationalQuotes.length)
+    quoteTextElement.textContent = inspirationalQuotes[currentIndex]
+    quoteTextElement.classList.add('fade-in')
+
+    // Chuyển đổi định kỳ mỗi 8 giây
+    setInterval(() => {
+      // 1. Zoom/Fade out
+      quoteTextElement.classList.remove('fade-in')
+      quoteTextElement.classList.add('fade-out')
+
+      // 2. Chờ hiệu ứng mờ xong (khoảng 600ms) rồi mới đổi chữ
+      setTimeout(() => {
+        let newIndex = currentIndex
+        // Đảm bảo không random trúng dòng hiện tại nếu có hơn 1 câu
+        if (inspirationalQuotes.length > 1) {
+          while (newIndex === currentIndex) {
+            newIndex = Math.floor(Math.random() * inspirationalQuotes.length)
+          }
+        }
+        currentIndex = newIndex
+        quoteTextElement.textContent = inspirationalQuotes[currentIndex]
+
+        // 3. Zoom/Fade in câu mới
+        quoteTextElement.classList.remove('fade-out')
+        quoteTextElement.classList.add('fade-in')
+      }, 600)
+    }, 8000)
+  }
+
   // =================== TAGS ===================
   function renderTags() {
     tagsContainer.innerHTML = ''
-    appData.popularTags.forEach((tag) => {
+    appData.popularTags.forEach((tagObj) => {
       const chip = document.createElement('button')
       chip.className = 'tag-chip'
-      chip.textContent = tag
+      chip.innerHTML = `<span class="tag-icon">${tagObj.icon}</span><span>${tagObj.text}</span>`
       chip.addEventListener('click', () => {
-        searchInput.value = tag
-        handleSearch(tag)
+        if (isDraggingTags) return // Ngăn click nếu đang lướt kéo chuột
+        searchInput.value = tagObj.text
+        handleSearch(tagObj.text)
         searchResultsSection.scrollIntoView({
           behavior: 'smooth',
           block: 'start',
@@ -206,6 +264,40 @@ document.addEventListener('DOMContentLoaded', () => {
       tagsContainer.appendChild(chip)
     })
   }
+
+  // Cho phép dùng chuột kéo cuộn ngang trên PC
+  let isDownTags = false
+  let startXTags
+  let scrollLeftTags
+  let isDraggingTags = false
+
+  tagsContainer.addEventListener('mousedown', (e) => {
+    isDownTags = true
+    isDraggingTags = false
+    tagsContainer.style.cursor = 'grabbing'
+    startXTags = e.pageX - tagsContainer.offsetLeft
+    scrollLeftTags = tagsContainer.scrollLeft
+  })
+  tagsContainer.addEventListener('mouseleave', () => {
+    isDownTags = false
+    tagsContainer.style.cursor = 'auto'
+  })
+  tagsContainer.addEventListener('mouseup', () => {
+    isDownTags = false
+    tagsContainer.style.cursor = 'auto'
+    // Cần 1 chút timeout để ngăn sự kiện click kịch hoạt liền sau khi drag
+    setTimeout(() => {
+      isDraggingTags = false
+    }, 50)
+  })
+  tagsContainer.addEventListener('mousemove', (e) => {
+    if (!isDownTags) return
+    e.preventDefault()
+    isDraggingTags = true
+    const x = e.pageX - tagsContainer.offsetLeft
+    const walk = (x - startXTags) * 2 // Tốc độ lướt
+    tagsContainer.scrollLeft = scrollLeftTags - walk
+  })
 
   // =================== SEARCH ===================
   function rankDisease(disease, q) {
@@ -248,7 +340,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const corpus = [
       ...new Set([
-        ...appData.popularTags,
+        ...appData.popularTags.map((t) => t.text),
         ...appData.diseases.map((d) => d.title),
       ]),
     ]
@@ -328,13 +420,56 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
         <i class="fa-solid fa-chevron-right" style="color:#9ca3af"></i>
       `
-      card.addEventListener('click', () => openDisease(disease))
+      card.addEventListener('click', () => {
+        openDisease(disease)
+        deactivateSearchMode()
+      })
       resultsContainer.appendChild(card)
     })
   }
 
+  // =================== PRO SEARCH MODE ===================
+  function activateSearchMode() {
+    document.body.classList.add('search-active')
+    searchOverlay.classList.remove('hidden')
+    void searchOverlay.offsetWidth // Trigger reflow
+    searchOverlay.classList.add('active')
+    btnCloseSearch.classList.remove('hidden')
+    document.querySelector('.app-main').scrollTop = 0
+  }
+
+  function deactivateSearchMode() {
+    document.body.classList.remove('search-active')
+    searchOverlay.classList.remove('active')
+    setTimeout(() => {
+      searchOverlay.classList.add('hidden')
+    }, 300)
+    btnCloseSearch.classList.add('hidden')
+    searchInput.blur()
+  }
+
+  searchInput.addEventListener('focus', activateSearchMode)
+  btnCloseSearch.addEventListener('click', deactivateSearchMode)
+  searchOverlay.addEventListener('click', deactivateSearchMode)
+
   searchInput.addEventListener('input', () => {
-    handleSearch(searchInput.value)
+    const val = searchInput.value
+    if (val.trim().length > 0) {
+      btnClearSearch.classList.remove('hidden')
+      btnVoiceSearch.classList.add('hidden')
+    } else {
+      btnClearSearch.classList.add('hidden')
+      btnVoiceSearch.classList.remove('hidden')
+    }
+    handleSearch(val)
+  })
+
+  btnClearSearch.addEventListener('click', () => {
+    searchInput.value = ''
+    btnClearSearch.classList.add('hidden')
+    btnVoiceSearch.classList.remove('hidden')
+    handleSearch('')
+    searchInput.focus()
   })
 
   // =================== VOICE SEARCH ===================
@@ -646,6 +781,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initAccordions()
 
   // =================== INIT ===================
+  initDynamicQuotes()
   renderTags()
   renderDiagramView()
 })

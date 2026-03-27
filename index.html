@@ -9,7 +9,7 @@
     <title>Việt Nam Đồng Ứng Liệu Pháp</title>
     <meta
       name="description"
-      content="Ứng dụng tra cứu bệnh và cách tự chữa gỡ bằng phương pháp Đồng Ứng."
+      content="Ứng dụng tra cứu bệnh và phương pháp điều trị những bệnh chứng không dùng thuốc, không dùng kim châm, hay dụng cụ."
     />
 
     <!-- PWA -->
@@ -80,22 +80,39 @@
     <main class="app-main" id="app-main">
       <!-- Trang Chủ -->
       <section id="view-home" class="view active">
-        <div class="search-section">
-          <h2>Bạn cần tra cứu bệnh gì?</h2>
-          <div class="search-box">
-            <i class="fa-solid fa-magnifying-glass search-icon"></i>
-            <input
-              type="text"
-              id="search-input"
-              placeholder="VD: Nhức đầu, Mất ngủ, Đau lưng..."
-              autocomplete="off"
-            />
+        <div id="search-overlay" class="search-overlay hidden"></div>
+        <div class="search-section" id="search-section">
+          <h2 id="search-heading">Bạn cần tra cứu bệnh gì?</h2>
+          <div class="search-box-wrapper">
+            <div class="search-box" id="search-box">
+              <i class="fa-solid fa-magnifying-glass search-icon"></i>
+              <input
+                type="text"
+                id="search-input"
+                placeholder="Tìm kiếm"
+                autocomplete="off"
+              />
+              <button
+                id="btn-clear-search"
+                class="icon-btn clear-btn hidden"
+                aria-label="Xóa"
+              >
+                <i class="fa-solid fa-circle-xmark"></i>
+              </button>
+              <button
+                id="btn-voice-search"
+                class="icon-btn voice-btn"
+                aria-label="Tìm kiếm giọng nói"
+              >
+                <i class="fa-solid fa-microphone"></i>
+              </button>
+            </div>
             <button
-              id="btn-voice-search"
-              class="icon-btn voice-btn"
-              aria-label="Tìm kiếm giọng nói"
+              id="btn-close-search"
+              class="icon-btn close-search-btn hidden"
+              aria-label="Đóng tìm kiếm"
             >
-              <i class="fa-solid fa-microphone"></i>
+              Hủy
             </button>
           </div>
         </div>
@@ -111,6 +128,17 @@
           <h3><i class="fa-solid fa-fire text-accent"></i> Tra cứu phổ biến</h3>
           <div class="tags-container" id="tags-container">
             <!-- JS Render -->
+          </div>
+        </div>
+
+        <!-- MỤC HIỂN THỊ KHẨU QUYẾT / KIM NGÔN -->
+        <!-- Đã được đánh dấu để bạn tiện theo dõi. Nội dung chữ nằm trong file js/app.js -->
+        <div class="quote-section">
+          <div class="quote-card">
+            <i class="fa-solid fa-gem quote-icon-top"></i>
+            <div class="quote-content-wrapper">
+              <p id="daily-quote-text" class="quote-text"></p>
+            </div>
           </div>
         </div>
 
