@@ -669,19 +669,57 @@ def build_diagram_sections() -> list[dict[str, str | list[MediaItem]]]:
     return sections
 
 
-def build_popular_tags(diseases: list[DiseaseData]) -> list[str]:
-    tags: list[str] = []
-    seen: set[str] = set()
+def build_popular_tags(diseases: list[DiseaseData]) -> list[dict[str, str]]:
+    base_tags = [
+       { "text": 'Cứng gáy - Vẹo cổ', "icon": '🦒' },
+       { "text": 'Thần Kinh Tọa', "icon": '🩼' },
+       { "text": 'Đau Lưng', "icon": '🦴' },
+       { "text": 'Chảy nước mắt sống', "icon": '😭' },
+       { "text": 'Chóng mặt', "icon": '😵‍💫' },
+       { "text": 'Ho', "icon": '🗣️💨' },
+       { "text": 'Viêm họng', "icon": '🗣️' },
+       { "text": 'Tiêu Chảy', "icon": '💩' },
+       { "text": 'Trào Ngược', "icon": '🤢' },
+       { "text": 'Tê Cánh Tay - Tê Ngón Tay', "icon": '🦾' },
+       { "text": 'Ngón tay cò súng', "icon": '🔫👆' },
+       { "text": 'Lật cổ chân', "icon": '🦶' },
+       { "text": 'Thốn Gót - Thốn Bàn Chân', "icon": '🦶💥' },
+       { "text": 'Đau Bụng Kinh', "icon": '😣🩸' },
+       { "text": 'Huyết Áp Cao', "icon": '🌡️📈' },
+       { "text": 'Cảm Cúm', "icon": '🤒' },
+       { "text": 'Mất Ngủ', "icon": '🦉' },
+       { "text": 'Nấc cụt', "icon": '😮‍💨' }
+    ]
+
+    seen = {tag["text"].lower() for tag in base_tags}
+    
+    def get_icon(title):
+        t = title.lower()
+        if 'đột quỵ' in t or 'tai biến mạch máu' in t or 'huyết áp' in t: return '🩸'
+        if 'nhức đầu' in t or 'đỉnh đầu' in t or 'nửa đầu' in t or 'trán' in t or 'thái dương' in t or 'chẩm gáy' in t or 'chóng mặt' in t: return '🤕'
+        if 'lưng' in t or 'cụp' in t or 'thần kinh tọa' in t: return '🦴'
+        if 'tai ' in t or ' lãng tai ' in t or 'điếc tai' in t or 'tai ù' in t or 'bệnh về tai' in t: return '👂'
+        if 'mắt' in t or 'quáng gà' in t or 'đảo nhãn' in t or 'thị lực' in t: return '👁️'
+        if 'cổ gáy' in t or 'vẹo cổ' in t: return '🦒'
+        if 'vai' in t or 'cổ tay' in t or 'cùi chỏ' in t or 'cánh tay' in t or 'ngón tay' in t or 'run tay' in t: return '💪'
+        if 'họng' in t or ' ho ' in t or 'suyễn' in t or 'thở' in t or 'ngực' in t or 'phổi' in t: return '🫁'
+        if 'tiêu chảy' in t or 'trào ngược' in t or 'bao tử' in t or 'dạ dày' in t or 'tiêu hóa' in t: return '🤢'
+        if 'tim' in t: return '❤️'
+        if 'lưỡi' in t: return '👅'
+        if 'gối' in t or 'gót' in t or 'chân' in t: return '🦵'
+        if 'phụ khoa' in t or 'âm đạo' in t or 'tử cung' in t or 'đau bụng kinh' in t: return '🚺'
+        if 'tiền liệt' in t or 'nhiếp hộ' in t or 'tiết niệu' in t: return '🚽'
+        if 'dị ứng' in t or 'cảm' in t or 'gout' in t or 'thống' in t or 'mất ngủ' in t or 'nấc' in t: return '🤒'
+        if 'sa bìu' in t or 'sinh dục' in t: return '🩲'
+        return '✨'
 
     for disease in diseases:
         title = disease["title"]
-        if title not in seen:
-            seen.add(title)
-            tags.append(title)
-        if len(tags) >= 18:
-            break
+        if title.lower() not in seen:
+            seen.add(title.lower())
+            base_tags.append({ "text": title, "icon": get_icon(title) })
 
-    return tags
+    return base_tags
 
 
 def main():

@@ -22,6 +22,10 @@
   .diagram-gallery {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+  .diagram-gallery:has(.diagram-accordion) {
+    display: flex;
+    flex-direction: column;
+  }
 }
 
 /* Desktop max-width container */

@@ -309,11 +309,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let best = 0
     fields.forEach((field) => {
-      if (field.includes(q) || q.includes(field)) {
-        best = Math.max(best, 1)
+      if (field === q) {
+        best = Math.max(best, 100)
         return
       }
-
+      const regex = new RegExp('(^|\\s)' + q + '(\\s|$)')
+      if (regex.test(field)) {
+        best = Math.max(best, 50)
+        return
+      }
+      if (field.startsWith(q)) {
+        best = Math.max(best, 20)
+        return
+      }
+      if (field.includes(q)) {
+        best = Math.max(best, 10)
+        return
+      }
+      if (q.includes(field)) {
+        best = Math.max(best, 5)
+        return
+      }
       const direct = similarity(q, field)
       best = Math.max(best, direct)
 
@@ -371,25 +387,10 @@ document.addEventListener('DOMContentLoaded', () => {
       return
     }
 
-    const results = appData.diseases.filter((disease) => {
-      const titleMatch = normalize(disease.title).includes(q)
-      const keywordMatch = disease.keywords.some(
-        (k) => normalize(k).includes(q) || q.includes(normalize(k)),
-      )
-      const categoryMatch = normalize(disease.category).includes(q)
-      return titleMatch || keywordMatch || categoryMatch
-    })
-
-    const fuzzyResults = getFuzzyResults(q)
-    const merged = [...results]
-    fuzzyResults.forEach((disease) => {
-      if (!merged.some((item) => item.id === disease.id)) {
-        merged.push(disease)
-      }
-    })
+    const merged = getFuzzyResults(q)
 
     const suggestions = getSearchSuggestions(q)
-    const shouldShowSuggestion = results.length === 0
+    const shouldShowSuggestion = merged.length === 0
 
     if (shouldShowSuggestion) {
       renderSearchSuggestions(query.trim(), suggestions)
@@ -398,7 +399,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     searchResultsSection.classList.remove('hidden')
-    renderResults(merged.slice(0, 20), query)
+    // CHỈ HIỂN THỊ 7 KẾT QUẢ
+    renderResults(merged.slice(0, 7), query)
   }
 
   function renderResults(results) {
@@ -642,7 +644,64 @@ document.addEventListener('DOMContentLoaded', () => {
 
     diagramEmpty.classList.add('hidden')
 
-    items.forEach((item) => {
+    // Grouping logic for 98 images into accordion
+    const groups = {
+      'Nhóm Đầu & Mặt': [],
+      'Nhóm Bàn Tay & Cánh Tay': [],
+      'Nhóm Bàn Chân & Cẳng Chân': [],
+      'Nhóm Thân & Nội Tạng': [],
+      'Nhóm Khác': []
+    }
+
+    items.forEach(item => {
+      const t = (item.caption || '').toLowerCase()
+      if (t.includes('mặt') || t.includes('não') || t.includes('tai')) {
+         groups['Nhóm Đầu & Mặt'].push(item)
+      } else if (t.includes('tay')) {
+         groups['Nhóm Bàn Tay & Cánh Tay'].push(item)
+      } else if (t.includes('chân')) {
+         groups['Nhóm Bàn Chân & Cẳng Chân'].push(item)
+      } else if (t.includes('thân') || t.includes('lưng') || t.includes('bụng') || t.includes('ngực')) {
+         groups['Nhóm Thân & Nội Tạng'].push(item)
+      } else {
+         groups['Nhóm Khác'].push(item)
+      }
+    })
+
+    // If there is only 1 group with items (like the tabs Ly thuyet, thao tac), don't show accordion
+    const activeGroups = Object.entries(groups).filter(g => g[1].length > 0)
+    if (activeGroups.length === 1 || items.length < 20) {
+       // Render normally
+       items.forEach(item => {
+          const figure = createFigure(item)
+          diagramGallery.appendChild(figure)
+       })
+       return
+    }
+
+    activeGroups.forEach(([gName, gItems]) => {
+       const details = document.createElement('details')
+       details.className = 'diagram-accordion'
+       // open the first group by default
+       if (gName === activeGroups[0][0]) details.open = true 
+       
+       const summary = document.createElement('summary')
+       summary.textContent = gName + ' (' + gItems.length + ')'
+       details.appendChild(summary)
+       
+       const grid = document.createElement('div')
+       grid.className = 'diagram-accordion-grid'
+       
+       gItems.forEach(item => {
+          grid.appendChild(createFigure(item))
+       })
+       
+       details.appendChild(grid)
+       diagramGallery.appendChild(details)
+    })
+  }
+
+  function createFigure(item) {
       const figure = document.createElement('figure')
       figure.className = 'diagram-card'
 
@@ -662,8 +721,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       figure.appendChild(image)
       figure.appendChild(caption)
-      diagramGallery.appendChild(figure)
-    })
+      return figure
   }
 
   function renderDiagramView() {
