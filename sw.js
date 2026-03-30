@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vndulp-app-v2' // Đổi tên cache để làm mới
+const CACHE_NAME = 'vndulp-app-v3' // Đổi tên cache để làm mới
 const urlsToCache = [
   './',
   './index.html',
